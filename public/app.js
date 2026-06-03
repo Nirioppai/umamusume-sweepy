@@ -2013,6 +2013,7 @@ const els = {
             const body = rows.map(row => `
                     <tr>
                         <td>${escapeHtml(row.turn)}</td>
+                        <td>${escapeHtml(row.time || '')}</td>
                         <td><span class="action-pill action-pill-${escapeAttr(normalizeHistoryAction(row).action)}">${escapeHtml(normalizeHistoryAction(row).action)}</span></td>
                         <td>${escapeHtml(row.facility)}</td>
                         <td class="action-history-detail">${escapeHtml(formatStatsDetail(row))}</td>
@@ -2024,6 +2025,7 @@ const els = {
                         <thead>
                             <tr>
                                 <th>TURN</th>
+                                <th>TIME</th>
                                 <th>ACTION</th>
                                 <th>FACILITY</th>
                                 <th>DETAIL</th>
