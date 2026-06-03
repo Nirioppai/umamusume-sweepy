@@ -276,6 +276,55 @@ def update_start_state(data):
         active_start_state['succession_rank_point'] = get_item_count(item_list, 75)
 
 
+def normalize_rental_charas(data):
+    rental_list = (
+        data.get('rental_succession_trained_chara_array') or
+        data.get('following_trained_chara_array') or
+        []
+    )
+    rentals = []
+    for chara in rental_list:
+        raw_id = str(chara.get('card_id', ''))
+        if not raw_id.isdigit():
+            continue
+        cid = raw_id
+        tree = {
+            "self": {"card_id": cid, "name": chara_map.get(cid, f"Unknown ({cid})"), "factors": [], "wins": get_win_summary(chara.get('win_saddle_id_array', []))},
+            "p1": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])},
+            "p2": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])},
+            "gp1": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])},
+            "gp2": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])},
+            "gp3": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])},
+            "gp4": {"card_id": 0, "name": "", "factors": [], "wins": get_win_summary([])}
+        }
+        tree["self"]["factors"] = get_factors(get_chara_factor_ids(chara), cid)
+        for sc in chara.get('succession_chara_array', []):
+            pos = sc.get('position_id')
+            sc_cid = sc.get('card_id', 0)
+            key = ""
+            if pos == 10: key = "p1"
+            elif pos == 20: key = "p2"
+            elif pos == 11: key = "gp1"
+            elif pos == 12: key = "gp2"
+            elif pos == 21: key = "gp3"
+            elif pos == 22: key = "gp4"
+            if key:
+                tree[key]["card_id"] = sc_cid
+                tree[key]["name"] = chara_map.get(str(sc_cid), f"Unknown ({sc_cid})")
+                tree[key]["factors"] = get_factors(sc.get('factor_id_array', []), sc_cid)
+                tree[key]["wins"] = get_win_summary(sc.get('win_saddle_id_array', []))
+        rentals.append({
+            'instance_id': chara.get('trained_chara_id'),
+            'viewer_id': chara.get('viewer_id'),
+            'card_id': cid,
+            'name': chara_map.get(cid, f"Unknown ({cid})"),
+            'rank': chara.get('rank', 0),
+            'tree': tree,
+            'is_rental': True
+        })
+    return rentals
+
+
 def normalize_friend_cards(data):
     source = 'refresh'
     friend_data = data.get('friend_support_card_data')
@@ -649,6 +698,8 @@ class StartCareerRequest(BaseModel):
     friend_card_id: int
     parent_id_1: int
     parent_id_2: int
+    rental_viewer_id: int = 0
+    rental_trained_chara_id: int = 0
     scenario_id: int = 4
     deck_id: int = 1
     use_tp: int = 30
@@ -665,6 +716,8 @@ class RunCareerRequest(BaseModel):
     friend_card_id: int = 0
     parent_id_1: int = 0
     parent_id_2: int = 0
+    rental_viewer_id: int = 0
+    rental_trained_chara_id: int = 0
     scenario_id: int = 0
     deck_id: int = 1
     use_tp: int = 30
@@ -837,6 +890,8 @@ def start_career_from_request(req):
         friend_card_id=req.friend_card_id,
         parent_id_1=req.parent_id_1,
         parent_id_2=req.parent_id_2,
+        rental_viewer_id=req.rental_viewer_id,
+        rental_trained_chara_id=req.rental_trained_chara_id,
         scenario_id=req.scenario_id,
         deck_id=req.deck_id,
         use_tp=req.use_tp,
@@ -1298,6 +1353,7 @@ async def get_friend_list(req: FriendListRequest):
         return {
             "success": True,
             "friends": active_dashboard_data["friends"],
+            "rental_charas": active_dashboard_data.get("rental_charas", []),
             "exclude_viewer_ids": active_dashboard_data.get("friendExcludeIds", []),
             "source": "cache"
         }
@@ -1307,15 +1363,18 @@ async def get_friend_list(req: FriendListRequest):
         data = result.get('data', {})
         update_start_state(data)
         friends, exclude_viewer_ids, source = normalize_friend_cards(data)
+        rental_charas = normalize_rental_charas(data)
 
         if active_dashboard_data is not None:
             active_dashboard_data["friends"] = friends
+            active_dashboard_data["rental_charas"] = rental_charas
             active_dashboard_data["friendExcludeIds"] = exclude_viewer_ids
             active_dashboard_data["friendsLoaded"] = True
 
         return {
             "success": True,
             "friends": friends,
+            "rental_charas": rental_charas,
             "exclude_viewer_ids": exclude_viewer_ids,
             "source": source
         }
