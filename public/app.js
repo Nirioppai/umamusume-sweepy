@@ -1649,6 +1649,23 @@ const els = {
                     renderSkillEditorRightSide();
                 }
             });
+            document.getElementById('skill-blacklist-non-tier-btn')?.addEventListener('click', async () => {
+                const current = getCurrentPreset();
+                if (!current) return;
+                const tieredSkills = new Set((current.learn_skill_list || []).flat());
+                if (!current.learn_skill_blacklist) current.learn_skill_blacklist = [];
+                let changed = false;
+                (skillDataCache || []).forEach(s => {
+                    if (!tieredSkills.has(s.name) && !current.learn_skill_blacklist.includes(s.name)) {
+                        current.learn_skill_blacklist.push(s.name);
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    await savePresetConfig();
+                    renderSkillEditorRightSide();
+                }
+            });
             document.getElementById('skill-clear-blacklist-btn')?.addEventListener('click', async () => {
                 const current = getCurrentPreset();
                 if (!current) return;
