@@ -1162,12 +1162,17 @@ def manage_career_loop(req, preset, initial_result):
             
         if not req.dev_mode:
             break
-            
+
         for _ in range(6):
             if backend_loop_stop:
                 return
             dna_sleep(1.0, 1.0)
-            
+
+        try:
+            active_client.call('load/index', {'adid': ''})
+        except Exception as e:
+            print(f"Loop load/index failed: {e}")
+
         started_ok = False
         while not started_ok and not backend_loop_stop:
             try:
