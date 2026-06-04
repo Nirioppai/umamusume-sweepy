@@ -89,7 +89,7 @@ const els = {
         function syncDevControls() {
             if (!els.devBtn) return;
             els.devBtn.classList.toggle('is-active', state.devEnabled);
-            els.devBtn.innerText = `DEV: ${state.devEnabled ? 'ON' : 'OFF'}`;
+            els.devBtn.innerText = `LOOP: ${state.devEnabled ? 'ON' : 'OFF'}`;
         }
         function setDevEnabled(value, options = {}) {
             state.devEnabled = Boolean(value);
@@ -315,20 +315,11 @@ const els = {
         const savedPassword = localStorage.getItem('saved_password');
         if (savedUsername) document.getElementById('username').value = savedUsername;
         if (savedPassword) document.getElementById('password').value = savedPassword;
-        let themeToggleClicks = 0;
         els.themeToggle.addEventListener('click', () => {
             const nextTheme = document.body.classList.contains('theme-blue') ? 'pink' : 'blue';
             applyTheme(nextTheme);
             localStorage.setItem('theme', nextTheme);
-            themeToggleClicks++;
-            if (themeToggleClicks >= 11 && els.devBtn) {
-                els.devBtn.style.display = 'inline-block';
-            }
         });
-        window.iwillnotabusethis = function() {
-            if (els.devBtn) els.devBtn.style.display = 'inline-block';
-            setDevEnabled(true, { persist: true });
-        };
         const sleep = ms => new Promise(resolve => window.setTimeout(resolve, ms));
         const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
         async function waitForDomPaint(frames = 2) {
@@ -1959,36 +1950,40 @@ const els = {
                 if (rows.length) renderActionHistory(rows);
                 if (runner.running) {
                     els.startStatus.classList.toggle('error', false);
-                    if (!rows.length) els.startStatus.innerText = `Turn ${runner.turn || '?'} / ${runner.last_action || 'running'} / ${runner.steps || 0}`;
+                    const loopRunning = runner.loop_count || 0;
+                    const loopPrefix = state.devEnabled && loopRunning > 0 ? `[#${loopRunning + 1}] ` : '';
+                    if (!rows.length) els.startStatus.innerText = `${loopPrefix}Turn ${runner.turn || '?'} / ${runner.last_action || 'running'} / ${runner.steps || 0}`;
                     return;
                 }
                 if (state.runnerTimer && !state.devEnabled) {
                     bgClearTimer(state.runnerTimer);
                     state.runnerTimer = 0;
                 }
+                const loopCount = runner.loop_count || 0;
+                const loopLabel = loopCount > 0 ? ` [${loopCount} completed]` : '';
                 if (runner.last_error) {
                     els.startStatus.classList.toggle('error', true);
-                    if (!rows.length) els.startStatus.innerText = runner.last_error;
+                    if (!rows.length) els.startStatus.innerText = runner.last_error + (loopCount > 0 ? loopLabel : '');
                     if (state.devEnabled) {
                         state.consecutiveRunnerFails++;
                         if (state.consecutiveRunnerFails >= 3) {
-                            if (!rows.length) els.startStatus.innerText = runner.last_error + " (Auto-retry disabled due to loop)";
+                            if (!rows.length) els.startStatus.innerText = runner.last_error + ` (loop stopped after ${state.consecutiveRunnerFails} fails${loopLabel})`;
                             setDevEnabled(false, { persist: true });
                         }
                     }
                 } else if (state.devEnabled && runner.finished && !runner.last_error) {
                     state.consecutiveRunnerFails = 0;
                     els.startStatus.classList.toggle('error', false);
-                    if (!rows.length) els.startStatus.innerText = `Career finished! Restarting...`;
+                    if (!rows.length) els.startStatus.innerText = `Career #${loopCount + 1} finished! Restarting...`;
                     if (state.account && state.account.career) state.account.career.active = false;
                     renderAccountStrip(state.account);
                 } else if (runner.steps) {
                     els.startStatus.classList.toggle('error', false);
-                    if (!rows.length) els.startStatus.innerText = `Runner stopped after ${runner.steps} steps`;
+                    if (!rows.length) els.startStatus.innerText = `Runner stopped after ${runner.steps} steps${loopLabel}`;
                     if (state.devEnabled) {
                         state.consecutiveRunnerFails++;
                         if (state.consecutiveRunnerFails >= 3) {
-                            if (!rows.length) els.startStatus.innerText = `Runner stopped after ${runner.steps} steps (Auto-retry disabled due to loop)`;
+                            if (!rows.length) els.startStatus.innerText = `Runner stopped after ${runner.steps} steps (loop stopped after ${state.consecutiveRunnerFails} fails${loopLabel})`;
                             setDevEnabled(false, { persist: true });
                         }
                     }

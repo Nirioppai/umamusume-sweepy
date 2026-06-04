@@ -1131,13 +1131,15 @@ async def start_career(req: StartCareerRequest):
 
 backend_loop_thread = None
 backend_loop_stop = False
+backend_loop_count = 0
 
 def manage_career_loop(req, preset, initial_result):
-    global backend_loop_stop, active_account, active_client
+    global backend_loop_stop, active_account, active_client, backend_loop_count
     max_steps = max(1, min(int(req.max_steps or 2500), 3000))
     consecutive_fails = 0
     current_result = initial_result
-    
+    backend_loop_count = 0
+
     while not backend_loop_stop:
         career_runner.start(active_client, preset, current_result, max_steps, burn_clocks=req.burn_clocks, dev_mode=req.dev_mode)
         
@@ -1154,6 +1156,7 @@ def manage_career_loop(req, preset, initial_result):
                 break
         else:
             consecutive_fails = 0
+            backend_loop_count += 1
             if active_account and "career" in active_account and active_account["career"]:
                 active_account["career"]["active"] = False
             
@@ -1256,14 +1259,18 @@ async def run_career(req: RunCareerRequest):
             dna_sleep(0.5, 0.5)
         else:
             career_runner.start(active_client, preset, result, max(1, min(int(req.max_steps or 2500), 3000)), burn_clocks=req.burn_clocks, dev_mode=req.dev_mode)
-            
-        return {"success": True, "account": account, "chara_info": chara_info, "runner": career_runner.snapshot()}
+
+        snap = career_runner.snapshot()
+        snap["loop_count"] = backend_loop_count
+        return {"success": True, "account": account, "chara_info": chara_info, "runner": snap}
     except Exception as e:
         return {"success": False, "detail": str(e)}
 
 @app.get("/api/career/runner")
 async def career_runner_status():
-    return {"success": True, "runner": career_runner.snapshot()}
+    snap = career_runner.snapshot()
+    snap["loop_count"] = backend_loop_count
+    return {"success": True, "runner": snap}
 
 @app.post("/api/career/runner/stop")
 async def stop_career_runner():
