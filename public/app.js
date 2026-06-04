@@ -1432,7 +1432,7 @@ const els = {
             tiers.forEach((tier, i) => {
                 const isActive = activeEditTier === i;
                 const itemsHtml = tier.map(s =>
-                    `<div class="skill-tag">
+                    `<div class="skill-tag" draggable="true" data-skill="${escapeAttr(s)}" data-tier="${i}">
                         ${escapeHtml(s)} <span class="skill-tag-del" data-tier="${i}" data-skill="${escapeAttr(s)}">&times;</span>
                     </div>`
                 ).join('');
@@ -1440,7 +1440,7 @@ const els = {
                 tiersHtml += `
                 <div class="skill-tier-dropzone ${isActive ? 'is-active' : ''}" data-tier="${i}">
                     <div class="skill-tier-header">
-                        <span class="skill-tier-label">TIER ${i+1}</span>
+                        <span class="skill-tier-label">TIER ${i+1}${i === 0 ? ' <span class="skill-tier-priority-hint">(highest priority)</span>' : ''}</span>
                         <button class="btn btn-sm btn-danger-soft skill-editor-action tier-del-btn" data-tier="${i}">DEL</button>
                     </div>
                     <div class="skill-tag-list">
@@ -1456,7 +1456,7 @@ const els = {
 
                 const blacklist = current.learn_skill_blacklist || [];
                 els.skillBlacklistContainer.innerHTML = blacklist.map(s =>
-                    `<div class="skill-tag blacklist">
+                    `<div class="skill-tag blacklist" draggable="true" data-skill="${escapeAttr(s)}" data-blacklist="true">
                         ${escapeHtml(s)} <span class="skill-tag-del" data-blacklist="true" data-skill="${escapeAttr(s)}">&times;</span>
                     </div>`
                 ).join('');
@@ -1502,6 +1502,84 @@ const els = {
                     renderSkillEditorRightSide();
                 });
             });
+
+            // Drag from skill tags
+            document.querySelectorAll('.skill-tag[draggable]').forEach(tag => {
+                tag.addEventListener('dragstart', e => {
+                    const skill = tag.getAttribute('data-skill');
+                    const isBlacklist = tag.hasAttribute('data-blacklist');
+                    const tier = isBlacklist ? null : parseInt(tag.getAttribute('data-tier'));
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ skill, tier, blacklist: isBlacklist }));
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.stopPropagation();
+                });
+            });
+
+            // Drop on tiers
+            els.skillTiersContainer?.querySelectorAll('.skill-tier-dropzone').forEach(zone => {
+                zone.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    zone.classList.add('drag-over');
+                });
+                zone.addEventListener('dragleave', e => {
+                    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+                });
+                zone.addEventListener('drop', async e => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const destTier = parseInt(zone.getAttribute('data-tier'));
+                    let data;
+                    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+                    const { skill, tier: srcTier, blacklist: srcBlacklist } = data;
+                    if (!srcBlacklist && srcTier === destTier) return;
+                    if (srcBlacklist) {
+                        current.learn_skill_blacklist = (current.learn_skill_blacklist || []).filter(s => s !== skill);
+                    } else {
+                        if (current.learn_skill_list?.[srcTier]) {
+                            current.learn_skill_list[srcTier] = current.learn_skill_list[srcTier].filter(s => s !== skill);
+                        }
+                    }
+                    if (!current.learn_skill_list) current.learn_skill_list = [];
+                    if (!current.learn_skill_list[destTier]) current.learn_skill_list[destTier] = [];
+                    if (!current.learn_skill_list[destTier].includes(skill)) {
+                        current.learn_skill_list[destTier].push(skill);
+                    }
+                    await savePresetConfig();
+                    renderSkillEditorRightSide();
+                });
+            });
+
+            // Drop on blacklist
+            if (els.skillBlacklistContainer) {
+                els.skillBlacklistContainer.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    els.skillBlacklistContainer.classList.add('drag-over');
+                });
+                els.skillBlacklistContainer.addEventListener('dragleave', e => {
+                    if (!els.skillBlacklistContainer.contains(e.relatedTarget)) {
+                        els.skillBlacklistContainer.classList.remove('drag-over');
+                    }
+                });
+                els.skillBlacklistContainer.addEventListener('drop', async e => {
+                    e.preventDefault();
+                    els.skillBlacklistContainer.classList.remove('drag-over');
+                    let data;
+                    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+                    const { skill, tier: srcTier, blacklist: srcBlacklist } = data;
+                    if (srcBlacklist) return;
+                    if (current.learn_skill_list?.[srcTier]) {
+                        current.learn_skill_list[srcTier] = current.learn_skill_list[srcTier].filter(s => s !== skill);
+                    }
+                    if (!current.learn_skill_blacklist) current.learn_skill_blacklist = [];
+                    if (!current.learn_skill_blacklist.includes(skill)) {
+                        current.learn_skill_blacklist.push(skill);
+                    }
+                    await savePresetConfig();
+                    renderSkillEditorRightSide();
+                });
+            }
         }
 
         async function addSkillToFocusedArea(name) {

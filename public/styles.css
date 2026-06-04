@@ -840,6 +840,13 @@ body.dashboard-mode .turn-delay-control {
 .skill-tier-dropzone.is-active .skill-tier-label {
   color: var(--accent-primary);
 }
+.skill-tier-priority-hint {
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0.55;
+  text-transform: lowercase;
+}
 .skill-tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -856,6 +863,20 @@ body.dashboard-mode .turn-delay-control {
   color: var(--text-main);
   font-size: 0.75rem;
   font-weight: 800;
+}
+.skill-tag[draggable="true"] {
+  cursor: grab;
+}
+.skill-tag[draggable="true"]:active {
+  cursor: grabbing;
+}
+.skill-tier-dropzone.drag-over {
+  border-color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.12);
+}
+.skill-blacklist-zone.drag-over {
+  border-color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.12);
 }
 .skill-tag-del {
   color: var(--accent-primary);
