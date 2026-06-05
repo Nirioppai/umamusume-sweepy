@@ -1502,6 +1502,13 @@ async def app_js():
         return FileResponse(path, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
     raise HTTPException(status_code=404, detail="app.js not found")
 
+@app.get("/app-local.js")
+async def app_local_js():
+    path = base_dir / "public" / "app-local.js"
+    if path.exists():
+        return FileResponse(path, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+    raise HTTPException(status_code=404, detail="app-local.js not found")
+
 
 @app.get("/sweep.png")
 async def sweep_png():

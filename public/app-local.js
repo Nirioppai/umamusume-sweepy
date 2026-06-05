@@ -31,17 +31,26 @@
     // Simulate-click the parent card matching instanceId (if not already selected and not full)
     function clickParentById(instanceId) {
         const target = parseInt(instanceId);
+        console.log('[sweepy] clickParentById target:', target);
         if (!target) return false;
+        const cards = document.querySelectorAll('#parent-grid .grid-card');
+        console.log('[sweepy] parent grid cards found:', cards.length);
         let found = false;
-        document.querySelectorAll('#parent-grid .grid-card').forEach(card => {
+        cards.forEach((card, i) => {
             if (found) return;
             const kicker = card.querySelector('.grid-card-kicker');
+            const kickerText = kicker ? kicker.textContent : '(no kicker)';
             const m = kicker && kicker.textContent.match(/ID:\s*(\d+)/);
-            if (m && parseInt(m[1]) === target && !card.classList.contains('vet-full')) {
+            const cardId = m ? parseInt(m[1]) : null;
+            const isFull = card.classList.contains('vet-full');
+            console.log(`[sweepy] card[${i}] kicker="${kickerText}" id=${cardId} vet-full=${isFull}`);
+            if (m && cardId === target && !isFull) {
+                console.log('[sweepy] clicking card', i);
                 card.click();
                 found = true;
             }
         });
+        console.log('[sweepy] clickParentById result:', found);
         return found;
     }
 
@@ -153,8 +162,10 @@
     // ── Parent ID input handler ───────────────────────────────
 
     function attachParentInput(inputEl, slotIdx, btnEl) {
+        console.log('[sweepy] attachParentInput slot', slotIdx, 'input:', inputEl, 'btn:', btnEl);
         function trySelect() {
             const id = parseInt(inputEl.value);
+            console.log('[sweepy] trySelect slot', slotIdx, 'id:', id);
             if (!id || id <= 0) return;
             const ok = setParentSlot(slotIdx, id);
             if (ok) {
@@ -251,6 +262,15 @@
                 // Small delay to let app.js finish its own change handler first
                 setTimeout(() => applyPresetSelection(presetSelect.value), 150);
             });
+
+            // Auto-apply on initial load: app.js sets innerHTML then .value without firing change
+            const observer = new MutationObserver(() => {
+                if (presetSelect.options.length > 0 && presetSelect.value) {
+                    observer.disconnect();
+                    setTimeout(() => applyPresetSelection(presetSelect.value), 300);
+                }
+            });
+            observer.observe(presetSelect, { childList: true });
         }
     }
 
