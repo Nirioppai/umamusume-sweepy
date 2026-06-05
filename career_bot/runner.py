@@ -236,14 +236,14 @@ class CareerRunner:
                         state = self._drain_events(client, strategy, state)
                     data = state.get("data") or {}
                     chara = data.get("chara_info") or {}
-                    self._mark(turn=chara["turn"])
+                    self._mark(turn=chara.get("turn", 0))
                     self._pace(0.4, 2.0, 0.9, 0.35)
                     decision = strategy.next_decision(state, preset)
 
                     if self.report:
                         add_decision(self.report, state, decision)
                 
-                self._log(decision.action, chara["turn"], decision.reason)
+                self._log(decision.action, chara.get("turn", 0), decision.reason)
                 if decision.action == "idle":
                     self._mark(last_action=decision.reason)
                     break
