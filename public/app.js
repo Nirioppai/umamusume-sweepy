@@ -1993,11 +1993,14 @@ const els = {
             let finalMessage = '';
             let finalIsError = false;
             const activeCareer = state.account && state.account.career && state.account.career.active;
+            const loopMaxEl = document.getElementById('loop-max-input');
+            const maxLoops = state.devEnabled ? (parseInt(loopMaxEl && loopMaxEl.value) || 0) : 0;
             const body = activeCareer ? {
                 preset_name: state.selectedPreset,
                 max_steps: 2500,
                 burn_clocks: state.burnClocks,
-                dev_mode: state.devEnabled
+                dev_mode: state.devEnabled,
+                max_loops: maxLoops
             } : {
                 card_id: Number(selection.trainee.id),
                 support_card_ids: selection.deck.cards.map(card => Number(card.id)),
@@ -2017,7 +2020,8 @@ const els = {
                 preset_name: state.selectedPreset,
                 max_steps: 2500,
                 burn_clocks: state.burnClocks,
-                dev_mode: state.devEnabled
+                dev_mode: state.devEnabled,
+                max_loops: maxLoops
             };
             try {
                 const data = await apiJson('/api/career/run', {

@@ -159,10 +159,14 @@
             const id = parseInt(inputEl.value);
             if (!id || id <= 0) return;
             const ok = setParentSlot(slotIdx, id);
-            if (!ok) {
-                // Flash red to signal ID not found
-                inputEl.style.outline = '2px solid red';
-                setTimeout(() => { inputEl.style.outline = ''; }, 1500);
+            if (ok) {
+                inputEl.value = '';
+                inputEl.style.outline = '2px solid #22c55e';
+                setTimeout(() => { inputEl.style.outline = ''; }, 800);
+            } else {
+                inputEl.style.outline = '2px solid #ef4444';
+                inputEl.title = 'ID not found in parent list';
+                setTimeout(() => { inputEl.style.outline = ''; inputEl.title = ''; }, 2000);
             }
         });
     }

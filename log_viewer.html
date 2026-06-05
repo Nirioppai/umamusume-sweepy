@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweepy — Career Log Viewer</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --border: #2e2e40;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+    --pink: #f472b6;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --speed-c: #60a5fa;
+    --stamina-c: #f472b6;
+    --power-c: #fb923c;
+    --guts-c: #4ade80;
+    --wit-c: #fbbf24;
+    --sp-c: #a78bfa;
+    --hp-c: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
+
+  /* ── Header ── */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; font-weight: 700; color: var(--accent2); }
+  .open-btn { background: var(--accent); border: none; color: #fff; font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer; }
+  .open-btn:hover { background: var(--accent2); }
+  .header-hint { font-size: 11px; color: var(--text3); margin-left: auto; }
+
+  /* ── Drop zone ── */
+  #dropZone { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 56px); gap: 16px; padding: 40px; text-align: center; }
+  #dropZone.drag-over { background: rgba(124,106,247,0.06); }
+  .drop-icon { font-size: 52px; opacity: 0.25; }
+  .drop-title { font-size: 18px; font-weight: 600; color: var(--text2); }
+  .drop-sub { font-size: 13px; color: var(--text3); }
+  .drop-or { font-size: 12px; color: var(--text3); }
+
+  /* ── Career summary bar ── */
+  #summaryBar { display: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 20px; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .s-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
+  .s-badge b { color: var(--text); }
+  .s-badge span { color: var(--text3); margin-right: 4px; }
+  .st-ok { color: var(--green) !important; }
+  .st-stopped { color: var(--yellow) !important; }
+  .st-error { color: var(--red) !important; }
+
+  /* ── Tabs ── */
+  #tabBar { display: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; gap: 0; }
+  .tab { display: inline-block; padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  /* ── Main content ── */
+  #main { display: none; padding: 14px 20px; }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar h2 { font-size: 13px; color: var(--text2); font-weight: 600; flex: 1; min-width: 100px; }
+  .filter-btn { padding: 3px 11px; border-radius: 20px; font-size: 11px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; }
+  .filter-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .search-box { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; width: 160px; }
+  .search-box::placeholder { color: var(--text3); }
+
+  /* ── Turn rows ── */
+  #turnsList { display: flex; flex-direction: column; gap: 4px; }
+  .turn-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .turn-row:hover { border-color: #4a4a6a; }
+  .turn-row.has-items { border-left: 3px solid var(--yellow); }
+  .turn-row.is-race  { border-left: 3px solid var(--pink); }
+  .turn-hdr { display: grid; grid-template-columns: 48px 110px 1fr auto auto; gap: 10px; align-items: center; padding: 7px 12px; cursor: pointer; user-select: none; }
+  .t-num { font-size: 17px; font-weight: 800; color: var(--text3); text-align: center; }
+  .t-time { font-size: 11px; color: var(--text3); font-family: monospace; }
+  .t-action { display: flex; flex-direction: column; gap: 3px; }
+  .t-label { font-weight: 600; font-size: 13px; }
+  .a-train { color: var(--blue); }
+  .a-rest  { color: var(--green); }
+  .a-race  { color: var(--pink); }
+  .a-other { color: var(--text2); }
+  .t-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+  .chip { border-radius: 4px; padding: 2px 7px; font-size: 10px; white-space: nowrap; }
+  .chip.buy  { background: #1c1206; border: 1px solid #854d0e; color: var(--yellow); }
+  .chip.use  { background: #0a1628; border: 1px solid #1e3a5f; color: var(--blue); }
+  .t-stats { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .sm { font-size: 11px; font-weight: 600; }
+  .sm.hp  { color: var(--hp-c); }
+  .sm.spd { color: var(--speed-c); }
+  .sm.sta { color: var(--stamina-c); }
+  .sm.pow { color: var(--power-c); }
+  .sm.gut { color: var(--guts-c); }
+  .sm.wit { color: var(--wit-c); }
+  .sm.sp  { color: var(--sp-c); }
+  .dp { font-size: 9px; }
+  .dp.pos { color: var(--green); }
+  .dp.neg { color: var(--red); }
+  .t-arrow { color: var(--text3); font-size: 14px; transition: transform 0.18s; }
+  .turn-row.open .t-arrow { transform: rotate(180deg); }
+  .t-details { display: none; border-top: 1px solid var(--border); background: var(--surface2); padding: 12px 16px; }
+  .turn-row.open .t-details { display: block; }
+  .dg { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+  .ds h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); font-weight: 600; margin-bottom: 8px; }
+  .sb-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .sb-lbl { width: 58px; font-size: 11px; color: var(--text2); text-align: right; }
+  .sb-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .sb-fill { height: 100%; border-radius: 3px; }
+  .sb-fill.hp  { background: var(--hp-c); }
+  .sb-fill.spd { background: var(--speed-c); }
+  .sb-fill.sta { background: var(--stamina-c); }
+  .sb-fill.pow { background: var(--power-c); }
+  .sb-fill.gut { background: var(--guts-c); }
+  .sb-fill.wit { background: var(--wit-c); }
+  .sb-fill.sp  { background: var(--sp-c); }
+  .sb-val { width: 70px; font-size: 11px; font-weight: 600; }
+  .ir { display: flex; gap: 8px; font-size: 12px; margin-bottom: 5px; }
+  .ir-lbl { color: var(--text3); width: 82px; flex-shrink: 0; }
+  .ir-val { color: var(--text); }
+  .il-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .il-row:last-child { border: none; }
+  .il-cost { color: var(--yellow); font-weight: 600; }
+  .il-uses { color: var(--blue); font-weight: 600; }
+  .res-ok { color: var(--green); font-size: 11px; }
+  .res-fail { color: var(--red); font-size: 11px; }
+  .res-skip { color: var(--text3); font-size: 11px; }
+  .api-row { font-size: 10px; font-family: monospace; color: var(--text3); display: flex; gap: 8px; margin-bottom: 2px; }
+  .d-req { color: var(--accent2); }
+  .d-res { color: var(--green); }
+  .inv-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .inv-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--text2); }
+
+  /* ── Shop History tab ── */
+  #shopMain { display: none; padding: 14px 20px; }
+  .shop-summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .shop-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; }
+  .shop-stat .ss-num { font-size: 22px; font-weight: 800; color: var(--text); }
+  .shop-stat .ss-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .shop-stat.good .ss-num { color: var(--green); }
+  .shop-stat.warn .ss-num { color: var(--yellow); }
+  .shop-stat.info .ss-num { color: var(--blue); }
+
+  .restock-list { display: flex; flex-direction: column; gap: 6px; }
+  .restock-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .restock-hdr { display: flex; align-items: center; gap: 12px; padding: 9px 14px; cursor: pointer; user-select: none; }
+  .restock-hdr:hover { background: var(--surface2); }
+  .r-num { font-size: 15px; font-weight: 800; color: var(--text3); width: 28px; text-align: center; }
+  .r-turns { font-size: 12px; color: var(--text2); }
+  .r-turns b { color: var(--text); }
+  .r-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+  .r-pill { font-size: 10px; font-weight: 600; border-radius: 12px; padding: 2px 8px; border: 1px solid; white-space: nowrap; }
+  .r-pill.bought  { background: #1c1206; border-color: #854d0e; color: var(--yellow); }
+  .r-pill.skipped { background: #1a1a14; border-color: #4a4a20; color: #a0a060; }
+  .r-pill.missed  { background: #140a0a; border-color: #4a2020; color: #c07070; }
+  .r-arrow { color: var(--text3); font-size: 13px; transition: transform 0.18s; }
+  .restock-card.open .r-arrow { transform: rotate(180deg); }
+
+  .restock-body { display: none; border-top: 1px solid var(--border); }
+  .restock-card.open .restock-body { display: block; }
+
+  .shop-table { width: 100%; border-collapse: collapse; }
+  .shop-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .shop-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .shop-table tr:last-child td { border-bottom: none; }
+  .shop-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .status-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 8px; }
+  .sb-bought   { background: #1c1206; color: var(--yellow); }
+  .sb-skipped  { background: #111108; color: #a0a060; }
+  .sb-missed   { background: #140a0a; color: #c07070; }
+  .sb-expired  { background: #0f0f12; color: var(--text3); }
+  .sb-limit    { background: #0a100a; color: var(--green); opacity: 0.7; }
+
+  .cost-cell { color: var(--yellow); font-weight: 600; }
+  .sale-cost { color: var(--green); font-weight: 600; }
+  .original-cost { text-decoration: line-through; color: var(--text3); font-size: 10px; margin-left: 4px; }
+  .limit-turns-cell { color: var(--text3); font-size: 11px; }
+
+  /* ── Item totals table ── */
+  .totals-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .totals-hdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; }
+  .totals-hdr:hover { background: var(--surface2); }
+  .totals-hdr h3 { font-size: 13px; font-weight: 700; color: var(--text2); flex: 1; }
+  .totals-hdr .t-arrow { color: var(--text3); font-size: 13px; transition: transform 0.18s; }
+  .totals-section.open .t-arrow { transform: rotate(180deg); }
+  .totals-body { display: none; border-top: 1px solid var(--border); }
+  .totals-section.open .totals-body { display: block; }
+  .totals-table { width: 100%; border-collapse: collapse; }
+  .totals-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .totals-table th.r { text-align: right; }
+  .totals-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .totals-table tr:last-child td { border-bottom: none; }
+  .totals-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .totals-table td.r { text-align: right; }
+  .tot-offered { color: var(--text2); font-weight: 600; }
+  .tot-bought  { color: var(--green); font-weight: 600; }
+  .tot-skipped { color: #a0a060; font-weight: 600; }
+  .tot-missed  { color: #c07070; font-weight: 600; }
+  .reason-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .reason-tag { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; color: var(--text3); white-space: nowrap; }
+
+  /* ── Summer Bootcamp turn highlight ── */
+  .turn-row.bootcamp { border-left: 3px solid #22d3ee !important; }
+  .turn-row.bootcamp .turn-hdr { background: rgba(34,211,238,0.04); }
+  .bootcamp-chip { background: rgba(34,211,238,0.12); border: 1px solid rgba(34,211,238,0.3); color: #22d3ee; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+  /* ── Multi-file header ── */
+  .file-list { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .file-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .file-pill .fp-x { color: var(--text3); cursor: pointer; font-size: 13px; line-height: 1; }
+  .file-pill .fp-x:hover { color: var(--red); }
+  .file-pill.active { border-color: var(--accent); color: var(--accent2); background: rgba(124,106,247,0.1); }
+
+  /* ── Metrics tab ── */
+  #metricsMain { display: none; padding: 14px 20px; }
+  .metrics-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .metrics-hdr { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .metrics-hdr h3 { font-size: 13px; font-weight: 700; color: var(--text2); }
+  .metrics-hdr p { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .metrics-body { padding: 14px; }
+  .metric-cards { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .metric-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; min-width: 130px; }
+  .mc-val { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .mc-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+  .mc-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .mc-pass { color: var(--green); }
+  .mc-fail { color: var(--red); }
+  .mc-warn { color: var(--yellow); }
+  .grade-table { width: 100%; border-collapse: collapse; }
+  .grade-table th, .grade-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; text-align: left; }
+  .grade-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; background: var(--surface2); }
+  .grade-table tr:last-child td { border-bottom: none; }
+  .grade-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .gbar { display: flex; align-items: center; gap: 8px; }
+  .gbar-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; max-width: 100px; }
+  .gbar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+  .no-data { color: var(--text3); font-size: 13px; text-align: center; padding: 30px; }
+  .run-table { width: 100%; border-collapse: collapse; }
+  .run-table th, .run-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; text-align: left; }
+  .run-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; background: var(--surface2); }
+  .run-table tr:last-child td { border-bottom: none; }
+  .pass-cell { color: var(--green); font-weight: 600; }
+  .fail-cell { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧹 Sweepy — Career Log Viewer</h1>
+  <button class="open-btn" onclick="document.getElementById('fi').click()">Open Log File</button>
+  <input id="fi" type="file" accept=".json" multiple style="display:none" onchange="loadFile(this)">
+  <div id="fileList" class="file-list"></div>
+  <span class="header-hint">Drop career_log_*.json files here (multi-file OK), or click Open</span>
+</header>
+
+<div id="summaryBar"></div>
+<div id="tabBar">
+  <span class="tab active" onclick="showTab('turns',this)">Turns</span>
+  <span class="tab" onclick="showTab('shop',this)">Shop History</span>
+  <span class="tab" onclick="showTab('metrics',this)">Metrics</span>
+</div>
+
+<div id="dropZone">
+  <div class="drop-icon">📋</div>
+  <div class="drop-title">Drop a career log here</div>
+  <div class="drop-sub">uma_runtime/bot_logs/career_log_*.json</div>
+  <div class="drop-or">— or —</div>
+  <button class="open-btn" onclick="document.getElementById('fi').click()">Browse File</button>
+</div>
+
+<div id="main">
+  <div class="toolbar">
+    <h2 id="turnsTitle"></h2>
+    <input class="search-box" type="text" placeholder="Search turns…" oninput="applyFilters()">
+    <button class="filter-btn on" data-f="all"      onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn"    data-f="training" onclick="setFilter('training',this)">Training</button>
+    <button class="filter-btn"    data-f="race"     onclick="setFilter('race',this)">Race</button>
+    <button class="filter-btn"    data-f="rest"     onclick="setFilter('rest',this)">Rest</button>
+    <button class="filter-btn"    data-f="items"    onclick="setFilter('items',this)">Has Items</button>
+  </div>
+  <div id="turnsList"></div>
+</div>
+
+<div id="shopMain">
+  <div id="shopSummaryBar" class="shop-summary-bar"></div>
+  <div id="itemTotals"></div>
+  <div id="restockList" class="restock-list"></div>
+</div>
+
+<div id="metricsMain"></div>
+
+<script>
+/* ── Item & command name maps (from items.py) ── */
+const ITEM = {
+  1001:"Speed Notepad",1002:"Stamina Notepad",1003:"Power Notepad",1004:"Guts Notepad",1005:"Wit Notepad",
+  1101:"Speed Manual",1102:"Stamina Manual",1103:"Power Manual",1104:"Guts Manual",1105:"Wit Manual",
+  1201:"Speed Scroll",1202:"Stamina Scroll",1203:"Power Scroll",1204:"Guts Scroll",1205:"Wit Scroll",
+  2001:"Vita 20",2002:"Vita 40",2003:"Vita 65",2101:"Royal Kale Juice",
+  2201:"Energy Drink MAX",2202:"Energy Drink MAX EX",
+  2301:"Plain Cupcake",2302:"Berry Sweet Cupcake",
+  3001:"Yummy Cat Food",3101:"Grilled Carrots",
+  4001:"Pretty Mirror",4002:"Reporter's Binoculars",4003:"Master Practice Guide",4004:"Scholar's Hat",
+  4101:"Fluffy Pillow",4102:"Pocket Planner",4103:"Rich Hand Cream",4104:"Smart Scale",
+  4105:"Aroma Diffuser",4106:"Practice Drills DVD",4201:"Miracle Cure",
+  5001:"Speed Training App",5002:"Stamina Training App",5003:"Power Training App",
+  5004:"Guts Training App",5005:"Wit Training App",
+  7001:"Reset Whistle",
+  8001:"Coaching Megaphone",8002:"Motivating Megaphone",8003:"Empowering Megaphone",
+  9001:"Speed Ankle Weights",9002:"Stamina Ankle Weights",9003:"Power Ankle Weights",9004:"Guts Ankle Weights",
+  10001:"Good-Luck Charm",11001:"Artisan Cleat Hammer",11002:"Master Cleat Hammer",11003:"Glow Sticks"
+};
+const SCENARIO = {1:"URA Finals",2:"Aoharu Cup",3:"Grand Live",4:"Make a New Track",5:"Grand Masters",6:"Mecha Umamusume"};
+const MOTIV_ICON = ["","😞","😕","😐","😊","🌟"];
+
+let logData = null;
+let activeFilter = 'all';
+let activeTab = 'turns';
+let allLogs = [];        // [{filename, data}, ...]
+let activeLogIndex = 0;
+
+/* ── File loading ── */
+function loadFile(input) {
+  for (const f of input.files) readBlob(f);
+  input.value = '';
+}
+function readBlob(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const idx = allLogs.findIndex(l => l.filename === file.name);
+      if (idx >= 0) { allLogs[idx] = { filename: file.name, data }; activeLogIndex = idx; }
+      else { allLogs.push({ filename: file.name, data }); activeLogIndex = allLogs.length - 1; }
+      renderAll();
+    }
+    catch(err) { alert('Could not parse JSON: ' + err.message); }
+  };
+  r.readAsText(file);
+}
+function renderAll() {
+  renderFileList();
+  if (!allLogs.length) return;
+  render(allLogs[activeLogIndex].data);
+  if (activeTab === 'metrics') renderMetrics();
+}
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  el.innerHTML = allLogs.map((l, i) => {
+    const shortName = l.filename.replace(/career_log_?/, '').replace(/\.json$/, '') || l.filename;
+    return `<div class="file-pill${i === activeLogIndex ? ' active' : ''}" onclick="selectLog(${i})" title="${esc(l.filename)}">
+      <span>${esc(shortName)}</span>
+      <span class="fp-x" onclick="event.stopPropagation();removeLog(${i})">✕</span>
+    </div>`;
+  }).join('');
+}
+function selectLog(i) {
+  activeLogIndex = i;
+  render(allLogs[i].data);
+  renderFileList();
+  if (activeTab === 'metrics') renderMetrics();
+}
+function removeLog(i) {
+  allLogs.splice(i, 1);
+  if (!allLogs.length) {
+    activeLogIndex = 0;
+    logData = null;
+    document.getElementById('dropZone').style.display = 'flex';
+    ['summaryBar','tabBar','main','shopMain','metricsMain'].forEach(id => {
+      document.getElementById(id).style.display = 'none';
+    });
+    renderFileList();
+    return;
+  }
+  activeLogIndex = Math.min(activeLogIndex, allLogs.length - 1);
+  renderAll();
+}
+
+/* ── Drag & drop ── */
+const dz = document.getElementById('dropZone');
+document.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+document.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+document.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  for (const f of e.dataTransfer.files) {
+    if (f.name.endsWith('.json')) readBlob(f);
+  }
+});
+
+/* ── Tabs ── */
+function showTab(name, btn) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('main').style.display        = name === 'turns'   ? 'block' : 'none';
+  document.getElementById('shopMain').style.display    = name === 'shop'    ? 'block' : 'none';
+  document.getElementById('metricsMain').style.display = name === 'metrics' ? 'block' : 'none';
+  if (name === 'metrics') renderMetrics();
+}
+
+/* ── Render ── */
+function render(data) {
+  logData = data;
+  renderSummary(data);
+  document.getElementById('dropZone').style.display    = 'none';
+  document.getElementById('tabBar').style.display      = 'flex';
+  document.getElementById('main').style.display        = activeTab === 'turns'   ? 'block' : 'none';
+  document.getElementById('shopMain').style.display    = activeTab === 'shop'    ? 'block' : 'none';
+  document.getElementById('metricsMain').style.display = activeTab === 'metrics' ? 'block' : 'none';
+  applyFilters();
+  renderShopHistory(data.turns || []);
+}
+
+function renderSummary(d) {
+  const bar = document.getElementById('summaryBar');
+  bar.style.display = 'flex';
+  const sc = SCENARIO[d.scenario_id] || ('Scenario ' + d.scenario_id);
+  const st = d.started_at ? new Date(d.started_at).toLocaleString() : '—';
+  const dur = d.started_at && d.ended_at ? fmtDur(new Date(d.ended_at) - new Date(d.started_at)) : '—';
+  const stCls = d.status === 'complete' ? 'st-ok' : d.status === 'stopped' ? 'st-stopped' : 'st-error';
+  bar.innerHTML = [
+    badge('Preset', d.preset_name || '—'),
+    badge('Scenario', sc),
+    `<div class="s-badge"><span>Status</span><b class="${stCls}">${esc(d.status || '—')}</b></div>`,
+    badge('Final Turn', d.final_turn || '—'),
+    badge('Turns', (d.turns||[]).length),
+    badge('Started', st),
+    badge('Duration', dur),
+  ].join('');
+}
+function badge(label, val) {
+  return `<div class="s-badge"><span>${label}</span><b>${esc(String(val))}</b></div>`;
+}
+
+/* ── Shop History ── */
+function buildRestocks(turns) {
+  const batches = [];
+  let prevKey = null, current = null;
+
+  for (const turn of turns) {
+    // Use enriched if available, fall back to raw
+    const rows = turn.shop_rows_enriched || [];
+    if (!rows.length) continue;
+
+    // Key: sorted shop_item_id+item_id pairs
+    const key = JSON.stringify(rows.map(r => [r.shop_item_id, r.item_id]).sort((a,b) => a[0]-b[0] || a[1]-b[1]));
+
+    if (key !== prevKey) {
+      if (current) batches.push(current);
+      // Deep-clone the rows as the "canonical" snapshot for this batch
+      current = {
+        startTurn: turn.turn,
+        endTurn:   turn.turn,
+        turns:     [turn.turn],
+        snapshot:  rows.map(r => Object.assign({}, r)),   // first appearance
+        // Per-item final status: track across all turns in batch
+        itemStatus: {}  // shop_item_id -> {bought, skip_reason, affordable}
+      };
+      prevKey = key;
+    } else {
+      current.endTurn = turn.turn;
+      current.turns.push(turn.turn);
+    }
+
+    // Accumulate per-item status across turns in this batch
+    for (const row of rows) {
+      const sid = row.shop_item_id;
+      const prev = current.itemStatus[sid];
+      if (!prev) {
+        current.itemStatus[sid] = {
+          bought:      row.selected || false,
+          skip_reason: row.skip_reason || null,
+          affordable:  row.affordable !== false,
+          limit_reached: row.limit_reached || false,
+          expired:     row.expired || false,
+        };
+      } else {
+        // Once bought, stay bought
+        if (row.selected) prev.bought = true;
+        if (row.limit_reached) prev.limit_reached = true;
+        // Track if it was ever affordable
+        if (row.affordable !== false) prev.affordable = true;
+        // Update skip reason (prefer the most informative one)
+        if (!prev.skip_reason && row.skip_reason) prev.skip_reason = row.skip_reason;
+      }
+    }
+  }
+  if (current) batches.push(current);
+  return batches;
+}
+
+function renderShopHistory(turns) {
+  const batches = buildRestocks(turns);
+
+  // ── Global totals ──
+  let totalOffered = 0, totalBought = 0, totalSkipped = 0, totalMissed = 0;
+  // Per-item aggregation: key = item_id
+  const perItem = {};   // item_id -> { name, offered, bought, skippedReasons: {reason->count}, missed }
+
+  for (const b of batches) {
+    for (const row of b.snapshot) {
+      const st  = b.itemStatus[row.shop_item_id] || {};
+      const key = row.item_id;
+      if (!perItem[key]) perItem[key] = {
+        name: row.name || ITEM[row.item_id] || ('id:' + row.item_id),
+        offered: 0, bought: 0, missed: 0, skippedReasons: {}
+      };
+      const pi = perItem[key];
+      pi.offered++;
+      totalOffered++;
+
+      if (st.bought) {
+        pi.bought++;
+        totalBought++;
+      } else if (st.expired || st.limit_reached) {
+        // don't count as missed — it was handled
+      } else {
+        const reason = st.skip_reason || 'not_bought';
+        if (reason && reason !== 'not_bought') {
+          pi.skippedReasons[reason] = (pi.skippedReasons[reason] || 0) + 1;
+          totalSkipped++;
+        } else {
+          pi.missed++;
+          totalMissed++;
+        }
+      }
+    }
+  }
+
+  document.getElementById('shopSummaryBar').innerHTML = `
+    <div class="shop-stat info"><div class="ss-num">${batches.length}</div><div class="ss-lbl">Restocks</div></div>
+    <div class="shop-stat info"><div class="ss-num">${totalOffered}</div><div class="ss-lbl">Slots Offered</div></div>
+    <div class="shop-stat good"><div class="ss-num">${totalBought}</div><div class="ss-lbl">Bought</div></div>
+    <div class="shop-stat warn"><div class="ss-num">${totalSkipped}</div><div class="ss-lbl">Skipped (bot policy)</div></div>
+    <div class="shop-stat"><div class="ss-num" style="color:var(--red)">${totalMissed}</div><div class="ss-lbl">Missed / Unaffordable</div></div>
+  `;
+
+  // ── Per-item totals table ──
+  const items = Object.values(perItem).sort((a, b) => b.offered - a.offered || a.name.localeCompare(b.name));
+  const totalsEl = document.getElementById('itemTotals');
+  totalsEl.innerHTML = `
+    <div class="totals-section open">
+      <div class="totals-hdr" onclick="this.closest('.totals-section').classList.toggle('open')">
+        <h3>Per-Item Totals &nbsp;<span style="font-size:11px;color:var(--text3);font-weight:400">${items.length} unique items</span></h3>
+        <div class="t-arrow">▾</div>
+      </div>
+      <div class="totals-body">
+        <table class="totals-table">
+          <thead><tr>
+            <th>Item</th>
+            <th class="r">Offered</th>
+            <th class="r">Bought</th>
+            <th class="r">Skipped</th>
+            <th class="r">Missed</th>
+            <th>Skip Reasons</th>
+          </tr></thead>
+          <tbody>${items.map(it => {
+            const totalSkip = Object.values(it.skippedReasons).reduce((a,b)=>a+b,0);
+            const reasonTags = Object.entries(it.skippedReasons)
+              .sort((a,b) => b[1]-a[1])
+              .map(([r,c]) => `<span class="reason-tag">${esc(r)}: ${c}</span>`)
+              .join('');
+            return `<tr>
+              <td>${esc(it.name)}</td>
+              <td class="r tot-offered">${it.offered}</td>
+              <td class="r tot-bought">${it.bought || '—'}</td>
+              <td class="r tot-skipped">${totalSkip || '—'}</td>
+              <td class="r tot-missed">${it.missed || '—'}</td>
+              <td><div class="reason-tags">${reasonTags || '<span style="color:var(--text3);font-size:11px">—</span>'}</div></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // ── Restock cards ──
+  const list = document.getElementById('restockList');
+  list.innerHTML = '';
+  batches.forEach((b, idx) => list.appendChild(buildRestockCard(b, idx + 1)));
+}
+
+function buildRestockCard(b, idx) {
+  const rows = b.snapshot;
+  let boughtCount = 0, skippedCount = 0, missedCount = 0;
+
+  for (const row of rows) {
+    const st = b.itemStatus[row.shop_item_id] || {};
+    if (st.bought) boughtCount++;
+    else if (st.skip_reason && st.skip_reason !== 'unaffordable') skippedCount++;
+    else missedCount++;
+  }
+
+  const turnSpan = b.startTurn === b.endTurn
+    ? `Turn <b>${b.startTurn}</b>`
+    : `Turns <b>${b.startTurn}–${b.endTurn}</b>`;
+
+  const card = document.createElement('div');
+  card.className = 'restock-card';
+  card.innerHTML = `
+    <div class="restock-hdr">
+      <div class="r-num">#${idx}</div>
+      <div class="r-turns">${turnSpan} &nbsp;<span style="color:var(--text3);font-size:11px">(${b.turns.length} turn${b.turns.length!==1?'s':''})</span></div>
+      <div class="r-pills">
+        ${boughtCount  ? `<span class="r-pill bought">${boughtCount} bought</span>` : ''}
+        ${skippedCount ? `<span class="r-pill skipped">${skippedCount} skipped</span>` : ''}
+        ${missedCount  ? `<span class="r-pill missed">${missedCount} missed</span>` : ''}
+      </div>
+      <div class="r-arrow">▾</div>
+    </div>
+    <div class="restock-body">
+      <table class="shop-table">
+        <thead><tr>
+          <th>Item</th>
+          <th>Cost</th>
+          <th>Limit</th>
+          <th>Expires</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody>${rows.map(row => buildShopRow(row, b.itemStatus[row.shop_item_id] || {})).join('')}</tbody>
+      </table>
+    </div>
+  `;
+  card.querySelector('.restock-hdr').addEventListener('click', () => card.classList.toggle('open'));
+  return card;
+}
+
+function buildShopRow(row, st) {
+  const name = row.name || ITEM[row.item_id] || ('id:' + row.item_id);
+  const cost = row.cost ?? row.coin_num ?? 0;
+  const origCost = row.original_cost ?? row.original_coin_num ?? cost;
+  const isOnSale = origCost > cost;
+  const limit = row.limit ?? row.limit_buy_count ?? 1;
+  const limitTurn = row.absolute_limit_turn ?? row.limit_turn ?? 0;
+
+  const costHtml = isOnSale
+    ? `<span class="sale-cost">🪙${cost}</span><span class="original-cost">🪙${origCost}</span>`
+    : `<span class="cost-cell">🪙${cost}</span>`;
+
+  const limitTurnHtml = limitTurn > 0
+    ? `<span class="limit-turns-cell">by turn ${limitTurn}</span>`
+    : `<span style="color:var(--text3)">—</span>`;
+
+  let statusHtml;
+  if (st.bought) {
+    statusHtml = `<span class="status-badge sb-bought">✓ Bought</span>`;
+  } else if (st.limit_reached) {
+    statusHtml = `<span class="status-badge sb-limit">✓ Already owned</span>`;
+  } else if (st.expired) {
+    statusHtml = `<span class="status-badge sb-expired">⊘ Expired</span>`;
+  } else if (st.skip_reason === 'unaffordable') {
+    statusHtml = `<span class="status-badge sb-missed">💸 Unaffordable</span>`;
+  } else if (st.skip_reason === 'skip_buy') {
+    statusHtml = `<span class="status-badge sb-skipped">⊘ Skipped (policy)</span>`;
+  } else if (st.skip_reason) {
+    statusHtml = `<span class="status-badge sb-skipped">⊘ ${esc(st.skip_reason)}</span>`;
+  } else {
+    statusHtml = `<span class="status-badge sb-missed">✗ Not bought</span>`;
+  }
+
+  return `<tr>
+    <td>${esc(name)}</td>
+    <td>${costHtml}</td>
+    <td style="color:var(--text3)">${limit}×</td>
+    <td>${limitTurnHtml}</td>
+    <td>${statusHtml}</td>
+  </tr>`;
+}
+
+/* ── Turn filters ── */
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.querySelector('.search-box').value.trim().toLowerCase();
+  let turns = (logData && logData.turns) || [];
+  if (activeFilter === 'training') turns = turns.filter(t => t.selected_action === 'command' && !(t.decision_reason||'').startsWith('rest'));
+  else if (activeFilter === 'race')  turns = turns.filter(t => t.selected_action === 'race');
+  else if (activeFilter === 'rest')  turns = turns.filter(t => (t.decision_reason||'').startsWith('rest'));
+  else if (activeFilter === 'items') turns = turns.filter(t => (t.bot_shop_selected||[]).length || (t.bot_item_use_selected||[]).length);
+  if (q) {
+    turns = turns.filter(t => {
+      const r = (t.decision_reason||'').toLowerCase();
+      const b = (t.bot_shop_selected||[]).map(i=>i.name).join(' ').toLowerCase();
+      const u = (t.bot_item_use_selected||[]).map(i=>i.name).join(' ').toLowerCase();
+      return r.includes(q) || b.includes(q) || u.includes(q) || String(t.turn).includes(q);
+    });
+  }
+  const n = turns.length;
+  document.getElementById('turnsTitle').textContent =
+    n + ' turn' + (n!==1?'s':'') + (activeFilter!=='all'||q?' (filtered)':'');
+  const prevMap = {};
+  const all = (logData && logData.turns) || [];
+  for (let i = 1; i < all.length; i++) prevMap[all[i].turn] = all[i-1].stats;
+  const list = document.getElementById('turnsList');
+  list.innerHTML = '';
+  turns.forEach(t => list.appendChild(buildRow(t, prevMap[t.turn] || null)));
+}
+
+/* ── Turn rows ── */
+function buildRow(t, prev) {
+  const bought = t.bot_shop_selected || [];
+  const used   = t.bot_item_use_selected || [];
+  const isRace = t.selected_action === 'race';
+  const hasItems = bought.length || used.length;
+  const firstReq = (t.api_calls || []).find(c => c.direction === 'REQ');
+  const ts = firstReq ? new Date(firstReq.ts * 1000) : null;
+  const timeStr = ts ? ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '—';
+  const {label, cls} = parseAction(t);
+  const s = t.stats || {}, p = prev || {};
+  const motiv = t.motivation || s.motivation || 3;
+  const chipsHtml = [
+    ...bought.map(i => `<span class="chip buy">🛒 ${esc(i.name)}</span>`),
+    ...used.map(i   => `<span class="chip use">✨ ${esc(i.name)}${i.use_num > 1 ? ' ×'+i.use_num : ''}</span>`),
+  ].join('');
+  const BOOTCAMP_RANGES = [[37,40],[61,64]];
+  const isBootcamp = BOOTCAMP_RANGES.some(([a,b]) => t.turn >= a && t.turn <= b);
+  const bootcampChip = isBootcamp ? `<span class="bootcamp-chip">☀️ Summer Bootcamp</span>` : '';
+  const row = document.createElement('div');
+  row.className = 'turn-row' + (hasItems ? ' has-items' : '') + (isRace ? ' is-race' : '') + (isBootcamp ? ' bootcamp' : '');
+  row.innerHTML = `
+    <div class="turn-hdr">
+      <div class="t-num">${t.turn}</div>
+      <div class="t-time">${esc(timeStr)}</div>
+      <div class="t-action">
+        <span class="t-label ${cls}">${esc(label)}</span>
+        ${(bootcampChip || chipsHtml) ? `<div class="t-chips">${bootcampChip}${chipsHtml}</div>` : ''}
+      </div>
+      <div class="t-stats">
+        ${sm('hp',  s.hp,          p.hp,          'HP')}
+        ${sm('spd', s.speed,       p.speed,       'SPD')}
+        ${sm('sta', s.stamina,     p.stamina,     'STA')}
+        ${sm('pow', s.power,       p.power,       'POW')}
+        ${sm('gut', s.guts,        p.guts,        'GUT')}
+        ${sm('wit', s.wit,         p.wit,         'WIT')}
+        ${sm('sp',  s.skill_point, p.skill_point, 'SP')}
+        ${t.mant_coin != null ? `<span style="font-size:11px;color:var(--yellow);font-weight:600">🪙${t.mant_coin}</span>` : ''}
+        <span style="font-size:12px">${MOTIV_ICON[Math.min(5,Math.max(1,motiv))]}</span>
+      </div>
+      <div class="t-arrow">▾</div>
+    </div>
+    <div class="t-details">${buildDetails(t, prev)}</div>
+  `;
+  row.querySelector('.turn-hdr').addEventListener('click', () => row.classList.toggle('open'));
+  return row;
+}
+
+function sm(cls, val, prev, title) {
+  if (val == null) return '';
+  const d = (prev != null && val !== prev) ? val - prev : null;
+  const delta = d !== null ? `<span class="dp ${d>=0?'pos':'neg'}">${d>=0?'+':''}${d}</span>` : '';
+  return `<span class="sm ${cls}" title="${title}">${val}${delta}</span>`;
+}
+
+function buildDetails(t, prev) {
+  const s = t.stats || {}, p = prev || {};
+  const bought = t.bot_shop_selected || [];
+  const used   = t.bot_item_use_selected || [];
+  const buyRes = t.bot_shop_result || {};
+  const useRes = t.bot_item_use_result || {};
+  const inv    = t.inventory || [];
+  const calls  = t.api_calls || [];
+  const shopOpts = t.shop_rows_enriched || t.bot_shop_candidates || [];
+
+  const {label, cls} = parseAction(t);
+  const firstReq = calls.find(c => c.direction === 'REQ');
+  const ts = firstReq ? new Date(firstReq.ts * 1000).toLocaleString() : '—';
+  const motiv = t.motivation || s.motivation || 3;
+
+  let html = '<div class="dg">';
+
+  html += `<div class="ds"><h4>Stats</h4>
+    ${sbar('HP',      s.hp,          s.max_hp||100, p.hp,          'hp')}
+    ${sbar('Speed',   s.speed,       1200,          p.speed,       'spd')}
+    ${sbar('Stamina', s.stamina,     1200,          p.stamina,     'sta')}
+    ${sbar('Power',   s.power,       1200,          p.power,       'pow')}
+    ${sbar('Guts',    s.guts,        1200,          p.guts,        'gut')}
+    ${sbar('Wit',     s.wit,         1200,          p.wit,         'wit')}
+    ${sbar('Skill Pt',s.skill_point, 999,           p.skill_point, 'sp')}
+  </div>`;
+
+  html += `<div class="ds"><h4>Turn Info</h4>
+    ${ir('Turn',       t.turn)}
+    ${ir('Time',       ts)}
+    ${ir('Action',     `<span class="${cls}">${esc(label)}</span>`)}
+    ${ir('Motivation', MOTIV_ICON[Math.min(5,Math.max(1,motiv))] + ' ' + motiv + '/5')}
+    ${ir('Mant Coin',  t.mant_coin != null ? `<span style="color:var(--yellow)">${t.mant_coin}</span>` : '—')}
+    ${ir('Event',      esc(t.event || '—'))}
+  </div>`;
+
+  if (shopOpts.length) {
+    const res = fmtRes(buyRes);
+    html += `<div class="ds"><h4>Shop This Turn ${res}</h4>`;
+    html += shopOpts.map(o => {
+      const picked = o.selected || bought.some(b => b.name === (o.name || ITEM[o.item_id]));
+      const cost = o.cost ?? o.coin_num ?? 0;
+      const origCost = o.original_cost ?? o.original_coin_num ?? cost;
+      const onSale = origCost > cost;
+      const costStr = onSale
+        ? `<span style="color:var(--green)">🪙${cost}</span><span style="text-decoration:line-through;color:var(--text3);font-size:10px;margin-left:3px">🪙${origCost}</span>`
+        : `<span style="color:var(--yellow)">🪙${cost}</span>`;
+      const reason = o.skip_reason ? `<span style="color:var(--text3);font-size:10px"> ⊘ ${esc(o.skip_reason)}</span>` : (picked ? `<span style="color:var(--green);font-size:10px"> ✓</span>` : '');
+      return `<div class="il-row" style="${picked?'':'opacity:0.5'}">
+        <span>${esc(o.name || ITEM[o.item_id] || ('id:'+o.item_id))}</span>
+        <span>${costStr}${reason}</span>
+      </div>`;
+    }).join('');
+    html += '</div>';
+  } else if (bought.length) {
+    const res = fmtRes(buyRes);
+    html += `<div class="ds"><h4>Bought ${res}</h4>`;
+    html += bought.map(i => `<div class="il-row"><span>${esc(i.name)}</span><span class="il-cost">🪙${i.cost}</span></div>`).join('');
+    html += '</div>';
+  }
+
+  if (used.length) {
+    const res = fmtRes(useRes);
+    html += `<div class="ds"><h4>Used ${res}</h4>`;
+    html += used.map(i => `<div class="il-row"><span>${esc(i.name)}</span><span class="il-uses">×${i.use_num}</span></div>`).join('');
+    html += '</div>';
+  }
+
+  if (inv.length) {
+    html += `<div class="ds"><h4>Inventory</h4><div class="inv-wrap">`;
+    html += inv.map(it => {
+      const nm = it.name || ITEM[it.item_id] || ('id:'+it.item_id);
+      return `<span class="inv-chip">${esc(nm)} ×${it.num||it.current_num||it.qty||1}</span>`;
+    }).join('');
+    html += '</div></div>';
+  }
+
+  if (calls.length) {
+    html += `<div class="ds" style="grid-column:1/-1"><h4>API Calls (${calls.length})</h4>`;
+    html += calls.map(c => {
+      const t2 = c.ts ? new Date(c.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:2}) : '';
+      return `<div class="api-row">
+        <span class="${c.direction==='REQ'?'d-req':'d-res'}">${c.direction}</span>
+        <span>${esc(c.endpoint||'')}</span>
+        <span style="color:var(--text3)">${esc(t2)}</span>
+      </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+/* ── Helpers ── */
+function parseAction(t) {
+  const action = t.selected_action || '';
+  const reason = t.decision_reason || '';
+  if (action === 'race') {
+    const parts = reason.split(' ');
+    if (parts.length >= 3) return { label: `🏁 Race: ${parts.slice(2).join(' ')} (${parts[0]}pts)`, cls: 'a-race' };
+    return { label: '🏁 Race', cls: 'a-race' };
+  }
+  if (reason.startsWith('rest')) return { label: '💤 Rest', cls: 'a-rest' };
+  if (reason.startsWith('training ')) {
+    const parts = reason.split(' ');
+    return { label: `⚡ ${parts[1]} Training`, cls: 'a-train' };
+  }
+  const parts = reason.split(' ');
+  if (parts.length >= 3 && !isNaN(parseInt(parts[0])))
+    return { label: `🏁 Race: ${parts.slice(2).join(' ')} (${parts[0]}pts)`, cls: 'a-race' };
+  return { label: reason || action || '—', cls: 'a-other' };
+}
+
+function sbar(label, val, max, prev, cls) {
+  if (val == null) return '';
+  const pct = max ? Math.min(100, Math.round(val/max*100)) : 0;
+  const d = (prev != null && val !== prev) ? val - prev : null;
+  const delta = d !== null ? ` <span class="dp ${d>=0?'pos':'neg'}">${d>=0?'+':''}${d}</span>` : '';
+  return `<div class="sb-row">
+    <span class="sb-lbl">${label}</span>
+    <div class="sb-track"><div class="sb-fill ${cls}" style="width:${pct}%"></div></div>
+    <span class="sb-val sm ${cls}">${val}${delta}</span>
+  </div>`;
+}
+function ir(label, val) {
+  return `<div class="ir"><span class="ir-lbl">${label}</span><span class="ir-val">${val}</span></div>`;
+}
+function fmtRes(r) {
+  if (!r || !Object.keys(r).length) return '';
+  if (r.skip)              return `<span class="res-skip">(${esc(r.skip)})</span>`;
+  if (r.result === 'ok')   return `<span class="res-ok">✓</span>`;
+  if (r.result === 'failed') return `<span class="res-fail">✗</span>`;
+  return '';
+}
+function fmtDur(ms) {
+  const s = Math.floor(ms/1000), m = Math.floor(s/60), h = Math.floor(m/60);
+  if (h) return `${h}h ${m%60}m`;
+  if (m) return `${m}m ${s%60}s`;
+  return `${s}s`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Metrics ── */
+const CLEAT_IDS = {11001:'Artisan Cleat Hammer', 11002:'Master Cleat Hammer'};
+
+function analyzeCleatHammers(turns) {
+  const uses = [];
+  for (const t of turns) {
+    const used = (t.bot_item_use_selected || []).filter(i => CLEAT_IDS[i.item_id]);
+    if (!used.length) continue;
+    const isRace = t.selected_action === 'race';
+    const parts = (t.decision_reason || '').split(' ');
+    // decision_reason race format: "150 G1 Race Name"
+    const grade = isRace && parts.length >= 2 ? parts[1] : '(non-race)';
+    const raceName = isRace && parts.length >= 3 ? parts.slice(2).join(' ') : '—';
+    for (const item of used) {
+      uses.push({ turn: t.turn, itemId: item.item_id, itemName: CLEAT_IDS[item.item_id] || item.name, isRace, raceGrade: grade, raceName });
+    }
+  }
+  return uses;
+}
+
+function checkTurn73MCH(turns) {
+  const TARGET_ID = 11002, TARGET_TURN = 73, GOAL = 3;
+  // Find the last turn at or before turn 73
+  const turn73 = [...turns].reverse().find(t => t.turn <= TARGET_TURN);
+  if (!turn73) return { met: false, invCount: 0, shopCount: 0, total: 0 };
+  const invEntry = (turn73.inventory || []).find(i => i.item_id === TARGET_ID);
+  const invCount = invEntry ? (invEntry.num || invEntry.current_num || invEntry.qty || 1) : 0;
+  // Count MCH slots in shop that haven't been bought/expired/limit-reached yet
+  const shopCount = (turn73.shop_rows_enriched || []).filter(r =>
+    r.item_id === TARGET_ID && !r.selected && !r.limit_reached && !r.expired
+  ).length;
+  const total = invCount + shopCount;
+  return { met: total >= GOAL, invCount, shopCount, total };
+}
+
+function renderMetrics() {
+  const el = document.getElementById('metricsMain');
+  if (!allLogs.length) { el.innerHTML = '<p class="no-data">No log files loaded.</p>'; return; }
+
+  const runRows = allLogs.map(({ filename, data }) => {
+    const turns = data.turns || [];
+    const uses = analyzeCleatHammers(turns);
+    const mch73 = checkTurn73MCH(turns);
+    const artisanUses = uses.filter(u => u.itemId === 11001).length;
+    const masterUses  = uses.filter(u => u.itemId === 11002).length;
+    const shortName = filename.replace(/career_log_?/, '').replace(/\.json$/, '') || filename;
+    const finalTurn = turns.length ? turns[turns.length - 1].turn : '—';
+    return { shortName, filename, artisanUses, masterUses, mch73, uses, finalTurn };
+  });
+
+  const totalRuns = runRows.length;
+  const passCount = runRows.filter(r => r.mch73.met).length;
+  const avgArtisan = totalRuns ? (runRows.reduce((s,r)=>s+r.artisanUses,0)/totalRuns).toFixed(1) : '—';
+  const avgMaster  = totalRuns ? (runRows.reduce((s,r)=>s+r.masterUses,0)/totalRuns).toFixed(1) : '—';
+  const passRate   = totalRuns ? Math.round(passCount / totalRuns * 100) : 0;
+  const passCls = passCount === totalRuns ? 'mc-pass' : passCount === 0 ? 'mc-fail' : 'mc-warn';
+
+  let html = `<div class="metric-cards">
+    <div class="metric-card"><div class="mc-val" style="color:var(--accent2)">${totalRuns}</div><div class="mc-lbl">Runs Loaded</div></div>
+    <div class="metric-card"><div class="mc-val ${passCls}">${passCount}/${totalRuns}</div><div class="mc-lbl">Reached T73 w/ 3 MCH</div><div class="mc-sub">${passRate}% success rate</div></div>
+    <div class="metric-card"><div class="mc-val" style="color:var(--yellow)">${avgArtisan}</div><div class="mc-lbl">Avg Artisan Uses</div><div class="mc-sub">per run</div></div>
+    <div class="metric-card"><div class="mc-val" style="color:var(--yellow)">${avgMaster}</div><div class="mc-lbl">Avg Master Uses</div><div class="mc-sub">per run</div></div>
+  </div>`;
+
+  // ── Cleat Hammer grade breakdown (aggregated) ──
+  const allUses = runRows.flatMap(r => r.uses);
+  const byKey = {};
+  for (const u of allUses) {
+    const key = u.itemId + '|' + u.raceGrade;
+    if (!byKey[key]) byKey[key] = { itemName: u.itemName, grade: u.raceGrade, count: 0 };
+    byKey[key].count++;
+  }
+  const gradeRows = Object.values(byKey).sort((a,b) => b.count - a.count || a.grade.localeCompare(b.grade));
+  const maxCount = Math.max(1, ...gradeRows.map(r => r.count));
+
+  html += `<div class="metrics-section">
+    <div class="metrics-hdr">
+      <h3>Cleat Hammer Usage by Race Grade</h3>
+      <p>Artisan (11001) &amp; Master (11002) — ${allUses.length} total uses across ${totalRuns} run${totalRuns!==1?'s':''}</p>
+    </div>
+    <div class="metrics-body">`;
+
+  if (!gradeRows.length) {
+    html += `<div class="no-data">No Cleat Hammer uses found in loaded logs.</div>`;
+  } else {
+    html += `<table class="grade-table"><thead><tr>
+      <th>Item</th><th>Race Grade</th><th>Uses</th><th>Distribution</th>
+    </tr></thead><tbody>`;
+    for (const g of gradeRows) {
+      const pct = Math.round(g.count / maxCount * 100);
+      const sharePct = Math.round(g.count / allUses.length * 100);
+      html += `<tr>
+        <td>${esc(g.itemName)}</td>
+        <td><b>${esc(g.grade)}</b></td>
+        <td>${g.count}</td>
+        <td><div class="gbar"><div class="gbar-track"><div class="gbar-fill" style="width:${pct}%"></div></div><span style="font-size:11px;color:var(--text3)">${sharePct}%</span></div></td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+  html += `</div></div>`;
+
+  // ── Per-run breakdown ──
+  html += `<div class="metrics-section">
+    <div class="metrics-hdr">
+      <h3>Per-Run Breakdown</h3>
+      <p>Turn 73 check: ≥3 Master Cleat Hammers (inventory + shop slots still available)</p>
+    </div>
+    <div class="metrics-body">
+    <table class="run-table"><thead><tr>
+      <th>Run</th>
+      <th>T73: inv + shop = total</th>
+      <th>T73 Check</th>
+      <th>Artisan Uses</th>
+      <th>Master Uses</th>
+      <th>Final Turn</th>
+    </tr></thead><tbody>`;
+  for (const r of runRows) {
+    const { invCount, shopCount, total, met } = r.mch73;
+    html += `<tr>
+      <td title="${esc(r.filename)}">${esc(r.shortName)}</td>
+      <td style="color:var(--text2)">${invCount} + ${shopCount} = <b>${total}</b></td>
+      <td class="${met?'pass-cell':'fail-cell'}">${met?'✓ Pass':'✗ Fail'}</td>
+      <td>${r.artisanUses || '—'}</td>
+      <td>${r.masterUses || '—'}</td>
+      <td>${r.finalTurn}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  el.innerHTML = html;
+}
+</script>
+</body>
+</html>
