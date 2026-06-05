@@ -1224,9 +1224,22 @@ def manage_career_loop(req, preset, initial_result):
             dna_sleep(1.0, 1.0)
 
         try:
-            active_client.call('load/index', {'adid': ''})
+            index_res = active_client.call('load/index', {'adid': ''})
+            index_data = index_res.get('data', {})
+            loop_account = get_account_status(index_data)
+            active_account = loop_account
         except Exception as e:
             print(f"Loop load/index failed: {e}")
+
+        if active_account and (active_account.get("career") or {}).get("active"):
+            try:
+                career_res = active_client.load_career()
+                current_result = career_res
+                consecutive_fails = 0
+                print("Loop: active career on server, resuming instead of starting fresh")
+                continue
+            except Exception as e:
+                print(f"Loop load_career fallback failed: {e}")
 
         started_ok = False
         while not started_ok and not backend_loop_stop:
