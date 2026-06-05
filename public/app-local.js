@@ -152,10 +152,8 @@
 
     // ── Parent ID input handler ───────────────────────────────
 
-    function attachParentInput(inputEl, slotIdx) {
-        inputEl.addEventListener('keydown', e => {
-            if (e.key !== 'Enter') return;
-            e.preventDefault();
+    function attachParentInput(inputEl, slotIdx, btnEl) {
+        function trySelect() {
             const id = parseInt(inputEl.value);
             if (!id || id <= 0) return;
             const ok = setParentSlot(slotIdx, id);
@@ -168,7 +166,13 @@
                 inputEl.title = 'ID not found in parent list';
                 setTimeout(() => { inputEl.style.outline = ''; inputEl.title = ''; }, 2000);
             }
+        }
+        inputEl.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            trySelect();
         });
+        if (btnEl) btnEl.addEventListener('click', trySelect);
     }
 
     // ── Styles ────────────────────────────────────────────────
@@ -194,10 +198,24 @@
                 opacity: 0.55;
                 text-transform: uppercase;
             }
+            .parent-id-field {
+                display: flex;
+                gap: 4px;
+                align-items: center;
+            }
             .parent-id-input {
                 font-size: 0.8rem !important;
                 padding: 4px 6px !important;
                 height: auto !important;
+                flex: 1;
+                min-width: 0;
+            }
+            .parent-id-btn {
+                height: auto !important;
+                padding: 4px 10px !important;
+                font-size: 0.75rem !important;
+                white-space: nowrap;
+                flex-shrink: 0;
             }
         `;
         document.head.appendChild(style);
@@ -210,8 +228,10 @@
 
         const p1Input = document.getElementById('parent-id-1-input');
         const p2Input = document.getElementById('parent-id-2-input');
-        if (p1Input) attachParentInput(p1Input, 0);
-        if (p2Input) attachParentInput(p2Input, 1);
+        const p1Btn = document.getElementById('parent-id-1-btn');
+        const p2Btn = document.getElementById('parent-id-2-btn');
+        if (p1Input) attachParentInput(p1Input, 0, p1Btn);
+        if (p2Input) attachParentInput(p2Input, 1, p2Btn);
 
         const saveBtn = document.getElementById('preset-save-selection-btn');
         if (saveBtn) {

@@ -26,7 +26,5 @@ if errorlevel 1 (
 )
 
 echo Starting Sweepy...
-start "" "%ROOT%log_viewer.html"
-start /B cmd /c "ping -n 5 127.0.0.1 > nul & start http://127.0.0.1:1616"
 "%VENV%\Scripts\python" "%ROOT%main.py"
 pause

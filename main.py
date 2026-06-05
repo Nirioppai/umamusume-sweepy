@@ -1727,4 +1727,5 @@ if __name__ == "__main__":
     print("Access the Web UI at: http://127.0.0.1:1616", flush=True)
     import webbrowser as _wb
     _wb.open((base_dir / "log_viewer.html").as_uri())
+    _wb.open("http://127.0.0.1:1616")
     uvicorn.run(app, host="127.0.0.1", port=1616, log_level="error")
