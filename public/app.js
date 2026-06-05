@@ -41,6 +41,9 @@ const els = {
     cardsToggle: document.getElementById('cards-toggle'),
     cardsChevron: document.getElementById('cards-chevron'),
     parentGrid: document.getElementById('parent-grid'),
+    rentalGrid: document.getElementById('rental-grid'),
+    rentalCount: document.getElementById('rental-count'),
+    rentalSection: document.getElementById('rental-section'),
     friendGrid: document.getElementById('friend-grid'),
     deckList: document.getElementById('deck-list'),
     umaCount: document.getElementById('uma-count'),
@@ -302,6 +305,7 @@ const els = {
         makeSectionToggle('friends-toggle',  'friends-chevron',  'friends-body',  true);
         makeSectionToggle('trainees-toggle', 'trainees-chevron', 'trainees-body', true);
         makeSectionToggle('parents-toggle',  'parents-chevron',  'parents-body',  true);
+        makeSectionToggle('rental-toggle',   'rental-chevron',   'rental-body',   true);
         makeSectionToggle('cards-toggle',    'cards-chevron',    'card-grid-wrapper', false);
         const applyTheme = theme => {
             const nextTheme = theme === 'blue' ? 'blue' : 'pink';
@@ -530,6 +534,7 @@ const els = {
             selection.friend = null;
             selection.trainee = null;
             selection.veterans = [];
+            selection.rental = null;
         }
         function hideBrokenImage(img) {
             img.onerror = null;
@@ -727,7 +732,7 @@ const els = {
             19: 'UG', 20: 'UF', 21: 'UE', 22: 'UD'
         };
         let dashData = null;
-        const selection = { deck: null, friend: null, trainee: null, veterans: [] };
+        const selection = { deck: null, friend: null, trainee: null, veterans: [], rental: null };
 
         async function syncSelectionToServer() {
             try {
@@ -735,7 +740,8 @@ const els = {
                     deck: selection.deck,
                     friend: selection.friend,
                     trainee: selection.trainee,
-                    veterans: selection.veterans
+                    veterans: selection.veterans,
+                    rental: selection.rental
                 };
                 await apiJson('/api/selection', {
                     method: 'POST',
@@ -755,6 +761,10 @@ const els = {
             } else if (action === 'trainee') {
                 document.querySelectorAll('#uma-grid .grid-card.selected').forEach(el => el.classList.remove('selected'));
                 selection.trainee = null;
+            } else if (action === 'rental') {
+                document.querySelectorAll('#rental-grid .grid-card.selected').forEach(el => el.classList.remove('selected'));
+                selection.rental = null;
+                updateVetSelectability();
             } else if (action === 'vet') {
                 const vet = selection.veterans[idx];
                 if (vet != null) {
@@ -774,7 +784,8 @@ const els = {
             if (!selection.deck) return 'Select a deck';
             if (!selection.friend) return 'Select a friend support';
             if (!selection.trainee) return 'Select a trainee';
-            if (selection.veterans.length < 2) return 'Select two parents';
+            const totalParents = selection.veterans.length + (selection.rental ? 1 : 0);
+            if (totalParents < 2) return selection.rental ? 'Select one own parent' : 'Select two parents';
             const parentError = getParentSelectionError();
             if (parentError) return parentError;
             const tp = state.account && state.account.tp ? Number(state.account.tp.current || 0) : 0;
@@ -790,8 +801,9 @@ const els = {
         function getParentSelectionError() {
             if (!selection.trainee) return '';
             const traineeId = Number(selection.trainee.id);
+            const totalParents = selection.veterans.length + (selection.rental ? 1 : 0);
+            if (totalParents < 2) return '';
             const lineages = selection.veterans.map(getParentLineageCards);
-            if (lineages.length < 2) return '';
             if (lineages.some(cards => cards[0] === traineeId)) return 'Direct parent is trainee';
             return '';
         }
@@ -866,26 +878,42 @@ const els = {
             } else {
                 setSlot('team-slot-trainee', 'Trainee', null, 'trainee', null, 'select trainee');
             }
-            ['team-slot-vet1', 'team-slot-vet2'].forEach((id, i) => {
-                const vet = selection.veterans[i];
-                if (vet) {
-                    setSlot(id, `Parent ${i + 1}`, `
-                        <div class="team-item-body">
-                            <img class="team-item-portrait" src="/api/images/${vet.card_id || '100101'}.png" onerror="hideBrokenImage(this)">
-                            <div class="team-item-text">
-                                <span class="team-item-name">${vet.name || 'Unknown'}</span>
-                                <span class="team-item-sub">${rankMap[vet.rank] || '??'}</span>
-                            </div>
+            // Parent 1: rental (following) takes priority, then own vet[0]
+            const p1 = selection.rental || selection.veterans[0];
+            const p1IsRental = !!selection.rental;
+            if (p1) {
+                setSlot('team-slot-vet1', 'Parent 1', `
+                    <div class="team-item-body">
+                        <img class="team-item-portrait" src="/api/images/${p1.card_id || '100101'}.png" onerror="hideBrokenImage(this)">
+                        <div class="team-item-text">
+                            <span class="team-item-name">${p1.name || 'Unknown'}</span>
+                            <span class="team-item-sub">${rankMap[p1.rank] || '??'}${p1IsRental ? ' · Following' : ''}</span>
                         </div>
-                    `, 'vet', i, 'select parent');
-                } else {
-                    setSlot(id, `Parent ${i + 1}`, null, 'vet', i, 'select parent');
-                }
-            });
+                    </div>
+                `, p1IsRental ? 'rental' : 'vet', p1IsRental ? null : 0, 'select parent');
+            } else {
+                setSlot('team-slot-vet1', 'Parent 1', null, 'vet', 0, 'select parent');
+            }
+            // Parent 2: own vet[0] if rental is set, otherwise own vet[1]
+            const p2 = selection.rental ? selection.veterans[0] : selection.veterans[1];
+            if (p2) {
+                setSlot('team-slot-vet2', 'Parent 2', `
+                    <div class="team-item-body">
+                        <img class="team-item-portrait" src="/api/images/${p2.card_id || '100101'}.png" onerror="hideBrokenImage(this)">
+                        <div class="team-item-text">
+                            <span class="team-item-name">${p2.name || 'Unknown'}</span>
+                            <span class="team-item-sub">${rankMap[p2.rank] || '??'}</span>
+                        </div>
+                    </div>
+                `, 'vet', selection.rental ? 0 : 1, 'select parent');
+            } else {
+                setSlot('team-slot-vet2', 'Parent 2', null, 'vet', selection.rental ? 0 : 1, 'select parent');
+            }
             syncStartButton();
         }
                 function updateVetSelectability() {
-            const full = selection.veterans.length >= 2;
+            const maxVets = selection.rental ? 1 : 2;
+            const full = selection.veterans.length >= maxVets;
             document.querySelectorAll('#parent-grid .grid-card').forEach(card => {
                 if (card.classList.contains('selected')) {
                     card.classList.remove('vet-full');
@@ -1871,7 +1899,7 @@ const els = {
             els.friendGrid.innerHTML = visibleFriends.map(friend => {
                 const imgId = friend.support_card_id || '10001';
                 const lb = friend.limit_break_count ?? '?';
-                return `<div class="grid-card friend-card">
+                return `<div class="grid-card friend-card" data-viewer-id="${friend.viewer_id}" data-support-id="${friend.support_card_id}">
                     <img src="/api/images/${imgId}.png" onerror="hideBrokenImage(this)">
                     <div class="grid-card-overlay">
                         <span class="grid-card-name">${friend.support_name || 'Unknown'}</span>
@@ -1913,6 +1941,15 @@ const els = {
                 });
                 if (!data.success) throw new Error(data.detail || 'Friend load failed');
                 dashData.friends = data.friends || [];
+                if (data.rental_charas !== undefined) {
+                    dashData.rentals = data.rental_charas || [];
+                    renderRentalCharas(dashData.rentals);
+                    attachRentalHandlers();
+                    if (state.pendingRentalSelection) {
+                        applyRentalServerSelection(state.pendingRentalSelection);
+                        state.pendingRentalSelection = null;
+                    }
+                }
                 appendSeenFriendIds(data.exclude_viewer_ids || []);
                 renderFriends();
                 if (data.source === 'Active Career (Skip)') {
@@ -1966,8 +2003,10 @@ const els = {
                 support_card_ids: selection.deck.cards.map(card => Number(card.id)),
                 friend_viewer_id: Number(selection.friend.viewer_id),
                 friend_card_id: Number(selection.friend.support_card_id),
-                parent_id_1: Number(selection.veterans[0].instance_id),
-                parent_id_2: Number(selection.veterans[1].instance_id),
+                parent_id_1: selection.rental ? 0 : Number(selection.veterans[0].instance_id),
+                parent_id_2: selection.rental ? Number(selection.veterans[0].instance_id) : Number(selection.veterans[1].instance_id),
+                rental_viewer_id: selection.rental ? Number(selection.rental.viewer_id) : 0,
+                rental_trained_chara_id: selection.rental ? Number(selection.rental.instance_id) : 0,
                 deck_id: Number(selection.deck.id),
                 scenario_id: 4,
                 use_tp: 30,
@@ -2039,7 +2078,11 @@ const els = {
                 const data = await apiJson('/api/career/runner');
                 if (!data.success || !data.runner) return;
                 const runner = data.runner;
+                const prevRunner = state.runner;
                 applyRunnerSnapshot(runner);
+                if (data.account && runner.running && (!prevRunner || !prevRunner.running)) {
+                    renderAccountStrip(data.account);
+                }
 
                 const rows = (runner.action_history && runner.action_history.length) ? runner.action_history : deriveActionHistory(runner.log || []);
                 if (rows.length) renderActionHistory(rows);
@@ -2289,7 +2332,7 @@ const els = {
                         </div>
                     </div>`;
                 }).join('');
-                return `<div class="deck-container">
+                return `<div class="deck-container" data-deck-id="${deck.id}">
                     <div class="deck-header">
                         <span>${deck.name.toUpperCase()}</span>
                         <span style="font-size:0.85rem; opacity:0.8">SLOT ${deck.id}</span>
@@ -2356,10 +2399,65 @@ const els = {
                 </div>`;
             }).join('');
         }
+        function renderRentalCharas(rentals) {
+            if (!els.rentalSection || !els.rentalGrid) return;
+            if (!rentals || rentals.length === 0) {
+                els.rentalSection.style.display = 'none';
+                return;
+            }
+            els.rentalSection.style.display = '';
+            els.rentalCount.innerText = `(${rentals.length})`;
+            els.rentalGrid.innerHTML = rentals.map(parent => {
+                const imgId = parent.card_id || '100101';
+                return `<div class="grid-card">
+                    <div class="rank-badge">${rankMap[parent.rank] || '??'}</div>
+                    <div class="rank-badge" style="top:auto;bottom:2.2rem;background:rgba(100,180,255,0.85);font-size:0.6rem;padding:1px 5px;">Following</div>
+                    <img src="/api/images/${imgId}.png" onerror="hideBrokenImage(this)">
+                    <div class="sparks-tooltip" style="--spark-bg: url('/api/images/${imgId}.png')">
+                        <div class="sparks-tooltip-title"></div>
+                        <div class="sparks-tooltip-scroll">
+                            <div class="sparks-lineage-grid">
+                                ${renderParentSparks(parent, imgId)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-card-overlay">
+                        <span class="grid-card-kicker">Parent 1 only</span>
+                        <span class="grid-card-name">${parent.name || 'Unknown'}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        function attachRentalHandlers() {
+            document.querySelectorAll('#rental-grid .grid-card').forEach((element, index) => {
+                element.classList.add('selectable');
+                element.addEventListener('click', () => selectRental(index, element));
+            });
+            bindSparkTooltips();
+        }
+        function selectRental(index, element) {
+            const alreadySelected = element.classList.contains('selected');
+            document.querySelectorAll('#rental-grid .grid-card.selected').forEach(c => c.classList.remove('selected'));
+            if (alreadySelected) {
+                selection.rental = null;
+            } else {
+                element.classList.add('selected');
+                selection.rental = { ...dashData.rentals[index], _rentalIdx: index };
+                // If 2 own parents already selected, drop the first (Parent 1 slot) since rental takes it
+                if (selection.veterans.length >= 2) {
+                    const removed = selection.veterans.splice(0, 1)[0];
+                    const ownCard = document.querySelectorAll('#parent-grid .grid-card')[removed._gridIdx];
+                    if (ownCard) ownCard.classList.remove('selected');
+                }
+            }
+            updateVetSelectability();
+            renderTeamPanel();
+            syncSelectionToServer();
+        }
         function renderTrainees(umas) {
             els.umaGrid.innerHTML = umas.map(uma => {
                 const imgId = uma.id || '100101';
-                return `<div class="grid-card">
+                return `<div class="grid-card" data-trainee-id="${uma.id}">
                     <img src="/api/images/${imgId}.png" onerror="hideBrokenImage(this)">
                     <div class="grid-card-overlay"><span class="grid-card-name">${uma.name || 'Unknown'}</span></div>
                 </div>`;
@@ -2393,7 +2491,7 @@ const els = {
             if (!activeCareer) return;
 
             resetSelection();
-            document.querySelectorAll('.deck-container.selected, #uma-grid .grid-card.selected, #parent-grid .grid-card.selected, #friend-grid .grid-card.selected')
+            document.querySelectorAll('.deck-container.selected, #uma-grid .grid-card.selected, #parent-grid .grid-card.selected, #rental-grid .grid-card.selected, #friend-grid .grid-card.selected')
                 .forEach(el => el.classList.remove('selected'));
 
             selectCareerDeck(activeCareer);
@@ -2431,6 +2529,16 @@ const els = {
             renderTeamPanel();
         }
 
+        function applyRentalServerSelection(rentalData) {
+            if (!rentalData || !dashData || !dashData.rentals) return;
+            const rIdx = dashData.rentals.findIndex(r => Number(r.instance_id) === Number(rentalData.instance_id));
+            if (rIdx >= 0) {
+                selection.rental = { ...dashData.rentals[rIdx], _rentalIdx: rIdx };
+                const rentalEls = document.querySelectorAll('#rental-grid .grid-card');
+                if (rentalEls[rIdx]) rentalEls[rIdx].classList.add('selected');
+                updateVetSelectability();
+            }
+        }
         function applyServerSelection(serverSelection) {
             if (!serverSelection) return;
             if (serverSelection.deck && dashData.validDecks) {
@@ -2450,9 +2558,10 @@ const els = {
                 }
             }
             if (serverSelection.veterans && dashData.parents) {
+                const maxVets = serverSelection.rental ? 1 : 2;
                 serverSelection.veterans.forEach(v => {
                     const pIdx = dashData.parents.findIndex(p => Number(p.instance_id) === Number(v.instance_id));
-                    if (pIdx >= 0 && selection.veterans.length < 2) {
+                    if (pIdx >= 0 && selection.veterans.length < maxVets) {
                         const parent = dashData.parents[pIdx];
                         parent._gridIdx = pIdx;
                         selection.veterans.push(parent);
@@ -2461,6 +2570,10 @@ const els = {
                     }
                 });
                 updateVetSelectability();
+            }
+            if (serverSelection.rental) {
+                state.pendingRentalSelection = serverSelection.rental;
+                applyRentalServerSelection(serverSelection.rental);
             }
             if (serverSelection.friend) {
                 state.pendingFriendSelection = {

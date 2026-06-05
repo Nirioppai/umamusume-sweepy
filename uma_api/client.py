@@ -276,7 +276,9 @@ def get_hwid(seed_string="default"):
 def check_deps():
     if not shutil.which('node'): raise Exception('node missing')
     if not os.path.exists(os.path.join(DIR, 'node_modules')):
-        subprocess.run(['npm', 'install', '--silent'], check=True, cwd=DIR)
+        npm = shutil.which('npm')
+        if not npm: raise Exception('npm missing')
+        subprocess.run([npm, 'install', '--silent'], check=True, cwd=DIR)
 
 def get_ticket(u, p, c=''):
     global LAST_TICKET_GEN_RESULT
@@ -284,7 +286,10 @@ def get_ticket(u, p, c=''):
     cmd = ['node', '-e', TICKET_GEN_JS, '--', '--dummy', '--username', u, '--password', p]
     if c: cmd += ['--code', c]
     
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=DIR)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90, cwd=DIR)
+    except subprocess.TimeoutExpired:
+        raise Exception('Steam login timed out after 90s — check network connectivity and try again')
     LAST_TICKET_GEN_RESULT = {
         'stdout': proc.stdout,
         'stderr': proc.stderr,
@@ -612,7 +617,20 @@ class UmaClient:
         if rc != 1:
             if rc == 205 and retry_205 > 0:
                 print(f"205 on {ep}, retrying... ({retry_205} left)")
-                dna_sleep(0.14, 0.19, 0.166, 0.0083)
+                new_res_ver = dh.get('res_ver') or dh.get('required_res_ver')
+                if new_res_ver and new_res_ver != self.res_ver:
+                    print(f"res_ver updated from 205 response: {self.res_ver} -> {new_res_ver}")
+                    self.res_ver = str(new_res_ver)
+                else:
+                    try:
+                        refresh = self.call('load/index', {'adid': ''}, retry_208=0, retry_205=0)
+                        rv = (refresh.get('data_headers') or {}).get('res_ver')
+                        if rv and str(rv) != self.res_ver:
+                            print(f"res_ver refreshed via load/index: {self.res_ver} -> {rv}")
+                            self.res_ver = str(rv)
+                    except Exception:
+                        pass
+                dna_sleep(1.0, 2.5)
                 return self.call(ep, args, retry_208=retry_208, retry_205=retry_205 - 1)
 
             if rc == 208 and retry_208 > 0:

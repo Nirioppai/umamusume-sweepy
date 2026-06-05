@@ -107,6 +107,17 @@
                             </div>
                         </div>
 
+                        <div id="parent-id-inputs" class="parent-id-inputs">
+                            <div class="parent-id-row">
+                                <span class="parent-id-label">P1 ID</span>
+                                <input type="number" id="parent-id-1-input" class="form-input parent-id-input" placeholder="type ID, press Enter..." min="1">
+                            </div>
+                            <div class="parent-id-row">
+                                <span class="parent-id-label">P2 ID</span>
+                                <input type="number" id="parent-id-2-input" class="form-input parent-id-input" placeholder="type ID, press Enter..." min="1">
+                            </div>
+                        </div>
+
                         <section class="dashboard-section" id="preset-section">
                             <h2 class="dashboard-section-title">PRESET CONFIGURATION</h2>
                             <div class="master-data-panel">
@@ -132,6 +143,7 @@
                                     </div>
                                 </div>
                                 <button id="preset-edit-skills-btn" class="btn btn-sm preset-wide-btn" type="button">CONFIGURE SKILLS (PRIORITIES & BLACKLIST)</button>
+                                <button id="preset-save-selection-btn" class="btn btn-sm preset-wide-btn" type="button">SAVE CURRENT SELECTION TO PRESET</button>
                             </div>
                         </section>
 
@@ -217,6 +229,15 @@
                                 <div id="parent-grid" class="data-grid"></div>
                             </div>
                         </section>
+                        <section class="dashboard-section" id="rental-section" style="display:none;">
+                            <h2 class="dashboard-section-title section-title-toggle" id="rental-toggle">
+                                <span class="collapse-chevron expanded" id="rental-chevron">&#9658;</span>
+                                FOLLOWING <span id="rental-count"></span>
+                            </h2>
+                            <div id="rental-body" class="collapsible-body expanded">
+                                <div id="rental-grid" class="data-grid"></div>
+                            </div>
+                        </section>
                         <section class="dashboard-section">
                             <h2 class="dashboard-section-title section-title-toggle" id="cards-toggle">
                                 <span class="collapse-chevron" id="cards-chevron">&#9658;</span>
@@ -287,6 +308,7 @@
         </div>
     </div>
     <script src="app.js?v=11"></script>
+    <script src="app-local.js?v=1"></script>
 </body>
 </html>
 
