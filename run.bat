@@ -27,3 +27,4 @@ if errorlevel 1 (
 
 echo Starting Sweepy...
 "%VENV%\Scripts\python" "%ROOT%main.py"
+pause
