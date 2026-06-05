@@ -14,3 +14,25 @@ Traceback (most recent call last):
 KeyError: 'turn'
 
 
+--- CRASH AT 2026-06-05 17:19:36 ---
+Traceback (most recent call last):
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 286, in _run
+    state = self._race(client, state, preset, decision.payload)
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 1006, in _race
+    out = self._drain_events(client, strategy, out)
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 786, in _drain_events
+    current = self._event(client, strategy, payload)
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 769, in _event
+    return client.check_event(**data)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\uma_api\client.py", line 859, in check_event
+    return self.call('single_mode_free/check_event', payload)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\delay.py", line 184, in _paced_call
+    return self._raw_call(ep, *args, **kwargs)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\uma_api\client.py", line 648, in call
+    raise Exception(err_msg)
+Exception: API error 201 on single_mode_free/check_event: {"endpoint": "single_mode_free/check_event", "response_code": 201, "result_code": 201, "data_headers": {"viewer_id": 3405336493685, "sid": "<redacted>", "servertime": 1780651176, "result_code": 201}}
+
+
