@@ -1908,7 +1908,7 @@ const els = {
             els.friendGrid.innerHTML = visibleFriends.map(friend => {
                 const imgId = friend.support_card_id || '10001';
                 const lb = friend.limit_break_count ?? '?';
-                return `<div class="grid-card friend-card">
+                return `<div class="grid-card friend-card" data-viewer-id="${friend.viewer_id}" data-support-id="${friend.support_card_id}">
                     <img src="/api/images/${imgId}.png" onerror="hideBrokenImage(this)">
                     <div class="grid-card-overlay">
                         <span class="grid-card-name">${friend.support_name || 'Unknown'}</span>
@@ -2087,7 +2087,11 @@ const els = {
                 const data = await apiJson('/api/career/runner');
                 if (!data.success || !data.runner) return;
                 const runner = data.runner;
+                const prevRunner = state.runner;
                 applyRunnerSnapshot(runner);
+                if (data.account && runner.running && (!prevRunner || !prevRunner.running)) {
+                    renderAccountStrip(data.account);
+                }
 
                 const rows = (runner.action_history && runner.action_history.length) ? runner.action_history : deriveActionHistory(runner.log || []);
                 if (rows.length) renderActionHistory(rows);
@@ -2333,7 +2337,7 @@ const els = {
                         </div>
                     </div>`;
                 }).join('');
-                return `<div class="deck-container">
+                return `<div class="deck-container" data-deck-id="${deck.id}">
                     <div class="deck-header">
                         <span>${deck.name.toUpperCase()}</span>
                         <span style="font-size:0.85rem; opacity:0.8">SLOT ${deck.id}</span>
@@ -2458,7 +2462,7 @@ const els = {
         function renderTrainees(umas) {
             els.umaGrid.innerHTML = umas.map(uma => {
                 const imgId = uma.id || '100101';
-                return `<div class="grid-card">
+                return `<div class="grid-card" data-trainee-id="${uma.id}">
                     <img src="/api/images/${imgId}.png" onerror="hideBrokenImage(this)">
                     <div class="grid-card-overlay"><span class="grid-card-name">${uma.name || 'Unknown'}</span></div>
                 </div>`;

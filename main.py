@@ -1318,7 +1318,7 @@ async def run_career(req: RunCareerRequest):
 
 @app.get("/api/career/runner")
 async def career_runner_status():
-    return {"success": True, "runner": career_runner.snapshot()}
+    return {"success": True, "runner": career_runner.snapshot(), "account": active_account}
 
 @app.post("/api/career/runner/stop")
 async def stop_career_runner():

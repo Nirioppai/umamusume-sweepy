@@ -631,10 +631,8 @@ class MantItemManager:
         return race_inst.startswith("1")
 
     def _old_ui_cleat_before_race(self, owned, turn, program_id, race_planner):
-        SUMMER_CAMP_2_START = 60
-        CLASSIC_YEAR_END = 48
-        SENIOR_YEAR_END = 72
         CLIMAX_RACE_TURNS = [74, 76, 78]
+        CLIMAX_PREP_START = 65
 
         master_qty = owned.get("Master Cleat Hammer", 0)
         artisan_qty = owned.get("Artisan Cleat Hammer", 0)
@@ -642,42 +640,22 @@ class MantItemManager:
             return None
 
         if turn in CLIMAX_RACE_TURNS:
+            # Climax races: always use Master; Artisan as fallback only
             if master_qty > 0:
                 return "Master Cleat Hammer"
             if artisan_qty > 0:
                 return "Artisan Cleat Hammer"
             return None
 
-        if turn > SUMMER_CAMP_2_START:
-            total = master_qty + artisan_qty
-            if total <= 2:
-                return None
-            reserve_total = min(2, total)
-            reserve_master = min(master_qty, reserve_total)
-            spare_master = master_qty - reserve_master
-            spare_artisan = artisan_qty - (reserve_total - reserve_master)
-
-            is_senior = turn <= SENIOR_YEAR_END
-            if is_senior and master_qty < 3 and spare_artisan > 0:
-                return "Artisan Cleat Hammer"
-            if spare_master > 0:
-                return "Master Cleat Hammer"
-            if spare_artisan > 0:
-                return "Artisan Cleat Hammer"
-            return None
-
-        if not self._is_g1_program(program_id, race_planner):
-            return None
-
-        is_senior = CLASSIC_YEAR_END < turn <= SENIOR_YEAR_END
-        if is_senior and master_qty < 3:
+        if turn >= CLIMAX_PREP_START:
+            # Turns 65-73: never spend Masters (need 3 for climax); use Artisan freely
             if artisan_qty > 0:
                 return "Artisan Cleat Hammer"
-            if master_qty > 0:
-                return "Master Cleat Hammer"
             return None
 
-        if master_qty > 0:
+        # Turns 1-64: Master on G1 races only; Artisan on any race
+        is_g1 = self._is_g1_program(program_id, race_planner)
+        if is_g1 and master_qty > 0:
             return "Master Cleat Hammer"
         if artisan_qty > 0:
             return "Artisan Cleat Hammer"
@@ -686,29 +664,53 @@ class MantItemManager:
     def _old_ui_cleat_shop_target(self, available, owned, budget, current_turn):
         CLASSIC_YEAR_END = 48
         SENIOR_YEAR_END = 72
+        CLIMAX_PREP_START = 65
 
         master_qty = owned.get("Master Cleat Hammer", 0)
         artisan_qty = owned.get("Artisan Cleat Hammer", 0)
         total_cleats = master_qty + artisan_qty
         is_senior = CLASSIC_YEAR_END < current_turn <= SENIOR_YEAR_END
         is_climax = current_turn > SENIOR_YEAR_END
+        is_climax_prep = current_turn >= CLIMAX_PREP_START
         if not (is_senior or is_climax):
             return None
 
         available_by_name = {name: row for name, row in available}
-        if is_senior:
-            if total_cleats >= 2:
-                return None
-            for candidate in ("Master Cleat Hammer", "Artisan Cleat Hammer"):
-                row = available_by_name.get(candidate)
-                if not row:
-                    continue
-                cost = int(row.get("coin_num") or SHOP_ITEM_COSTS.get(candidate, 9999))
-                if cost <= budget:
-                    return row
+
+        if is_climax:
+            # Turn 73+: buy the 3rd Master for climax races (74/76/78)
+            if master_qty < 3:
+                for candidate in ("Master Cleat Hammer", "Artisan Cleat Hammer"):
+                    row = available_by_name.get(candidate)
+                    if not row:
+                        continue
+                    cost = int(row.get("coin_num") or SHOP_ITEM_COSTS.get(candidate, 9999))
+                    if cost <= budget:
+                        return row
             return None
 
-        if total_cleats >= 3:
+        if is_climax_prep:
+            # Turns 65-72: hold at 2 Masters (3rd bought at turn 73 shop).
+            # Buy Master only if below 2; otherwise stock Artisan for race use.
+            if master_qty < 2:
+                for candidate in ("Master Cleat Hammer", "Artisan Cleat Hammer"):
+                    row = available_by_name.get(candidate)
+                    if not row:
+                        continue
+                    cost = int(row.get("coin_num") or SHOP_ITEM_COSTS.get(candidate, 9999))
+                    if cost <= budget:
+                        return row
+                return None
+            if artisan_qty < 2:
+                row = available_by_name.get("Artisan Cleat Hammer")
+                if row:
+                    cost = int(row.get("coin_num") or SHOP_ITEM_COSTS.get("Artisan Cleat Hammer", 9999))
+                    if cost <= budget:
+                        return row
+            return None
+
+        # Turns 49-64 (early senior): buy up to 2 total cleats
+        if total_cleats >= 2:
             return None
         if total_cleats < 2 and budget < 40:
             return None

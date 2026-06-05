@@ -276,7 +276,9 @@ def get_hwid(seed_string="default"):
 def check_deps():
     if not shutil.which('node'): raise Exception('node missing')
     if not os.path.exists(os.path.join(DIR, 'node_modules')):
-        subprocess.run(['npm', 'install', '--silent'], check=True, cwd=DIR)
+        npm = shutil.which('npm')
+        if not npm: raise Exception('npm missing')
+        subprocess.run([npm, 'install', '--silent'], check=True, cwd=DIR)
 
 def get_ticket(u, p, c=''):
     global LAST_TICKET_GEN_RESULT
@@ -284,7 +286,10 @@ def get_ticket(u, p, c=''):
     cmd = ['node', '-e', TICKET_GEN_JS, '--', '--dummy', '--username', u, '--password', p]
     if c: cmd += ['--code', c]
     
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=DIR)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90, cwd=DIR)
+    except subprocess.TimeoutExpired:
+        raise Exception('Steam login timed out after 90s — check network connectivity and try again')
     LAST_TICKET_GEN_RESULT = {
         'stdout': proc.stdout,
         'stderr': proc.stderr,
