@@ -811,6 +811,53 @@ async def save_preset(req: SavePresetRequest):
 async def delete_preset(req: DeletePresetByNameRequest):
     return {"success": preset_store.delete(req.name)}
 
+# ── Team Setup Presets ────────────────────────────────────────
+
+setup_presets_dir = base_dir / "data" / "setup_presets"
+
+def _slugify_setup(name):
+    import re
+    text = re.sub(r"[^a-zA-Z0-9._ -]+", "", str(name or "").strip())
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or "setup"
+
+class SaveSetupRequest(BaseModel):
+    name: str
+    data: dict
+
+class DeleteSetupRequest(BaseModel):
+    name: str
+
+@app.get("/api/setup-presets")
+async def get_setup_presets():
+    setup_presets_dir.mkdir(parents=True, exist_ok=True)
+    setups = {}
+    for path in setup_presets_dir.glob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            name = payload.get("name") or path.stem
+            setups[name] = payload.get("data", {})
+        except Exception:
+            continue
+    return {"success": True, "setups": setups}
+
+@app.post("/api/setup-presets")
+async def save_setup_preset(req: SaveSetupRequest):
+    setup_presets_dir.mkdir(parents=True, exist_ok=True)
+    slug = _slugify_setup(req.name)
+    path = setup_presets_dir / f"{slug}.json"
+    path.write_text(json.dumps({"name": req.name, "data": req.data}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"success": True}
+
+@app.post("/api/setup-presets/delete")
+async def delete_setup_preset(req: DeleteSetupRequest):
+    slug = _slugify_setup(req.name)
+    path = setup_presets_dir / f"{slug}.json"
+    if path.exists():
+        path.unlink()
+        return {"success": True}
+    return {"success": False, "detail": "Not found"}
+
 @app.get("/api/skills")
 async def get_skills():
     current_skill_data = {}

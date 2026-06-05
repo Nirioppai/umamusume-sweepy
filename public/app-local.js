@@ -1,4 +1,4 @@
-// app-local.js — local extensions: parent quick-select by ID + preset selection save/restore
+// app-local.js — local extensions: parent quick-select by ID + team setup slots + preset selection save/restore
 // This file is separate from app.js to avoid merge conflicts with upstream.
 (function () {
     'use strict';
@@ -15,9 +15,32 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
     }
 
+    async function apiLoadTeamSetups() {
+        try {
+            const res = await fetch('/api/setup-presets');
+            const json = await res.json();
+            return json.success ? (json.setups || {}) : {};
+        } catch { return {}; }
+    }
+
+    async function apiSaveTeamSetup(name, data) {
+        await fetch('/api/setup-presets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data })
+        });
+    }
+
+    async function apiDeleteTeamSetup(name) {
+        await fetch('/api/setup-presets/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+    }
+
     // ── DOM helpers ───────────────────────────────────────────
 
-    // Returns the instance IDs of currently selected own parents (in slot order)
     function readSelectedParentIds() {
         const ids = [];
         document.querySelectorAll('#parent-grid .grid-card.selected').forEach(card => {
@@ -28,63 +51,50 @@
         return ids;
     }
 
-    // Simulate-click the parent card matching instanceId (if not already selected and not full)
     function clickParentById(instanceId) {
         const target = parseInt(instanceId);
-        console.log('[sweepy] clickParentById target:', target);
         if (!target) return false;
         const cards = document.querySelectorAll('#parent-grid .grid-card');
-        console.log('[sweepy] parent grid cards found:', cards.length);
         let found = false;
-        cards.forEach((card, i) => {
+        cards.forEach((card) => {
             if (found) return;
             const kicker = card.querySelector('.grid-card-kicker');
-            const kickerText = kicker ? kicker.textContent : '(no kicker)';
             const m = kicker && kicker.textContent.match(/ID:\s*(\d+)/);
             const cardId = m ? parseInt(m[1]) : null;
-            const isFull = card.classList.contains('vet-full');
-            console.log(`[sweepy] card[${i}] kicker="${kickerText}" id=${cardId} vet-full=${isFull}`);
-            if (m && cardId === target && !isFull) {
-                console.log('[sweepy] clicking card', i);
+            if (m && cardId === target && !card.classList.contains('vet-full')) {
                 card.click();
                 found = true;
             }
         });
-        console.log('[sweepy] clickParentById result:', found);
         return found;
     }
 
     // ── Set a specific parent slot ────────────────────────────
 
-    // slotIdx: 0 = Parent 1, 1 = Parent 2
     function setParentSlot(slotIdx, instanceId) {
         const slot1 = document.getElementById('team-slot-vet1');
         const slot2 = document.getElementById('team-slot-vet2');
         if (!slot1 || !slot2) return false;
 
         if (slotIdx === 0) {
-            // Save old P2 before clearing, so we can restore it after
             const currentIds = readSelectedParentIds();
             const oldP2Id = currentIds[1];
-            // Deselect P2 first (so P1 deselect doesn't shift P2 into P1 slot)
             if (slot2.classList.contains('filled')) slot2.click();
             if (slot1.classList.contains('filled')) slot1.click();
             const ok = clickParentById(instanceId);
-            // Restore old P2 (if it existed and is different from new P1)
             if (oldP2Id && oldP2Id !== parseInt(instanceId)) {
                 clickParentById(oldP2Id);
             }
             return ok;
         } else {
-            // Just replace P2
             if (slot2.classList.contains('filled')) slot2.click();
             return clickParentById(instanceId);
         }
     }
 
-    // ── Save/Restore selection ────────────────────────────────
+    // ── Capture / Apply selection data ───────────────────────
 
-    function saveSelectionForPreset(presetName) {
+    function captureSelection() {
         const parentIds = readSelectedParentIds();
         const data = {
             parent_id_1: parentIds[0] ?? null,
@@ -93,6 +103,11 @@
             trainee_id: null,
             friend_viewer_id: null,
             friend_support_id: null,
+            delay_min: null,
+            delay_max: null,
+            burn_clocks: null,
+            loop_enabled: null,
+            loop_max: null,
         };
 
         const deckEl = document.querySelector('.deck-container.selected[data-deck-id]');
@@ -107,29 +122,36 @@
             data.friend_support_id = friendEl.getAttribute('data-support-id');
         }
 
-        const all = loadAll();
-        all[presetName] = data;
-        saveAll(all);
+        const minEl = document.getElementById('turn-delay-min');
+        const maxEl = document.getElementById('turn-delay-max');
+        if (minEl) data.delay_min = parseFloat(minEl.value);
+        if (maxEl) data.delay_max = parseFloat(maxEl.value);
+
+        const burnBtn = document.getElementById('burn-clocks-btn');
+        if (burnBtn) data.burn_clocks = burnBtn.classList.contains('is-active');
+
+        const loopBtn = document.getElementById('dev-career-btn');
+        if (loopBtn) data.loop_enabled = loopBtn.classList.contains('is-active');
+
+        const loopMaxEl = document.getElementById('loop-max-input');
+        if (loopMaxEl) data.loop_max = parseInt(loopMaxEl.value) || 0;
+
         return data;
     }
 
-    function applyPresetSelection(presetName) {
-        const saved = loadAll()[presetName];
-        if (!saved) return;
+    function applySelectionData(data) {
+        if (!data) return;
 
-        // Deck
-        if (saved.deck_id) {
-            const deckEl = document.querySelector(`.deck-container[data-deck-id="${saved.deck_id}"]`);
+        if (data.deck_id) {
+            const deckEl = document.querySelector(`.deck-container[data-deck-id="${data.deck_id}"]`);
             if (deckEl && !deckEl.classList.contains('selected')) deckEl.click();
         }
 
-        // Trainee
-        if (saved.trainee_id) {
-            const traineeEl = document.querySelector(`#uma-grid .grid-card[data-trainee-id="${saved.trainee_id}"]`);
+        if (data.trainee_id) {
+            const traineeEl = document.querySelector(`#uma-grid .grid-card[data-trainee-id="${data.trainee_id}"]`);
             if (traineeEl && !traineeEl.classList.contains('selected')) traineeEl.click();
         }
 
-        // Parents — clear existing slots, then re-select in order
         const slot1 = document.getElementById('team-slot-vet1');
         const slot2 = document.getElementById('team-slot-vet2');
         if (slot2 && slot2.classList.contains('filled')) slot2.click();
@@ -138,34 +160,145 @@
         const p1Input = document.getElementById('parent-id-1-input');
         const p2Input = document.getElementById('parent-id-2-input');
 
-        if (saved.parent_id_1) {
-            const found = clickParentById(saved.parent_id_1);
-            if (p1Input) p1Input.value = found ? saved.parent_id_1 : '';
+        if (data.parent_id_1) {
+            const found = clickParentById(data.parent_id_1);
+            if (p1Input) p1Input.value = found ? data.parent_id_1 : '';
         }
-        if (saved.parent_id_2) {
-            const found = clickParentById(saved.parent_id_2);
-            if (p2Input) p2Input.value = found ? saved.parent_id_2 : '';
+        if (data.parent_id_2) {
+            const found = clickParentById(data.parent_id_2);
+            if (p2Input) p2Input.value = found ? data.parent_id_2 : '';
         }
 
-        // Friend — try now, and again after async friend load completes
         function tryFriend() {
-            if (!saved.friend_viewer_id) return;
+            if (!data.friend_viewer_id) return;
             const friendEl = document.querySelector(
-                `#friend-grid .grid-card[data-viewer-id="${saved.friend_viewer_id}"][data-support-id="${saved.friend_support_id}"]`
+                `#friend-grid .grid-card[data-viewer-id="${data.friend_viewer_id}"][data-support-id="${data.friend_support_id}"]`
             );
             if (friendEl && !friendEl.classList.contains('selected')) friendEl.click();
         }
         tryFriend();
         setTimeout(tryFriend, 2500);
+
+        // Delay
+        if (data.delay_min != null && data.delay_max != null) {
+            const minEl = document.getElementById('turn-delay-min');
+            const maxEl = document.getElementById('turn-delay-max');
+            if (minEl && maxEl) {
+                minEl.value = data.delay_min;
+                maxEl.value = data.delay_max;
+                minEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        // Burn clocks
+        if (data.burn_clocks != null) {
+            const burnBtn = document.getElementById('burn-clocks-btn');
+            if (burnBtn && !burnBtn.disabled) {
+                const current = burnBtn.classList.contains('is-active');
+                if (current !== data.burn_clocks) burnBtn.click();
+            }
+        }
+
+        // Loop
+        if (data.loop_enabled != null) {
+            const loopBtn = document.getElementById('dev-career-btn');
+            if (loopBtn) {
+                const current = loopBtn.classList.contains('is-active');
+                if (current !== data.loop_enabled) loopBtn.click();
+            }
+        }
+
+        // Loop max
+        if (data.loop_max != null) {
+            const loopMaxEl = document.getElementById('loop-max-input');
+            if (loopMaxEl) loopMaxEl.value = data.loop_max;
+        }
+    }
+
+    // ── Per-preset save/restore (for auto-load on preset switch) ──
+
+    function saveSelectionForPreset(presetName) {
+        const all = loadAll();
+        all[presetName] = captureSelection();
+        saveAll(all);
+        return all[presetName];
+    }
+
+    function applyPresetSelection(presetName) {
+        const saved = loadAll()[presetName];
+        if (!saved) return;
+        applySelectionData(saved);
+    }
+
+    // ── Team Setups dropdown ──────────────────────────────────
+
+    async function populateTeamSetupDropdown(selectName) {
+        const sel = document.getElementById('team-setup-select');
+        if (!sel) return;
+        const setups = await apiLoadTeamSetups();
+        const names = Object.keys(setups);
+        const current = selectName !== undefined ? selectName : sel.value;
+        sel.innerHTML = '<option value="">— select setup —</option>' +
+            names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+        if (current && names.includes(current)) sel.value = current;
+    }
+
+    function injectTeamSetupUI() {
+        const anchor = document.getElementById('preset-section');
+        if (!anchor || document.getElementById('team-setup-section')) return;
+
+        const section = document.createElement('section');
+        section.className = 'dashboard-section';
+        section.id = 'team-setup-section';
+        section.innerHTML = `
+            <h2 class="dashboard-section-title">TEAM SETUP</h2>
+            <div class="master-data-panel">
+                <div class="preset-control-row preset-control-row-actions">
+                    <select id="team-setup-select" class="form-input master-data-input preset-input"></select>
+                    <button id="team-setup-save-btn" class="btn btn-sm preset-action-btn" type="button">SAVE</button>
+                    <button id="team-setup-del-btn" class="btn btn-sm btn-danger preset-action-btn" type="button">DEL</button>
+                </div>
+            </div>
+        `;
+        anchor.parentNode.insertBefore(section, anchor);
+
+        populateTeamSetupDropdown();
+
+        const sel = document.getElementById('team-setup-select');
+        const saveBtn = document.getElementById('team-setup-save-btn');
+        const delBtn = document.getElementById('team-setup-del-btn');
+
+        sel.addEventListener('change', async () => {
+            if (!sel.value) return;
+            const setups = await apiLoadTeamSetups();
+            applySelectionData(setups[sel.value]);
+        });
+
+        saveBtn.addEventListener('click', async () => {
+            const defaultName = sel.value || '';
+            const name = prompt('Save team setup as:', defaultName);
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            await apiSaveTeamSetup(trimmed, captureSelection());
+            await populateTeamSetupDropdown(trimmed);
+            const orig = saveBtn.textContent;
+            saveBtn.textContent = 'SAVED!';
+            setTimeout(() => { saveBtn.textContent = orig; }, 1200);
+        });
+
+        delBtn.addEventListener('click', async () => {
+            if (!sel.value) return;
+            if (!confirm(`Delete setup "${sel.value}"?`)) return;
+            await apiDeleteTeamSetup(sel.value);
+            await populateTeamSetupDropdown('');
+        });
     }
 
     // ── Parent ID input handler ───────────────────────────────
 
     function attachParentInput(inputEl, slotIdx, btnEl) {
-        console.log('[sweepy] attachParentInput slot', slotIdx, 'input:', inputEl, 'btn:', btnEl);
         function trySelect() {
             const id = parseInt(inputEl.value);
-            console.log('[sweepy] trySelect slot', slotIdx, 'id:', id);
             if (!id || id <= 0) return;
             const ok = setParentSlot(slotIdx, id);
             if (ok) {
@@ -256,10 +389,11 @@
             });
         }
 
+        injectTeamSetupUI();
+
         const presetSelect = document.getElementById('preset-select');
         if (presetSelect) {
             presetSelect.addEventListener('change', () => {
-                // Small delay to let app.js finish its own change handler first
                 setTimeout(() => applyPresetSelection(presetSelect.value), 150);
             });
 
