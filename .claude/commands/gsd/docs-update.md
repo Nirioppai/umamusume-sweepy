@@ -1,5 +1,5 @@
 ---
-name: gsd:docs-update
+name: gsd-docs-update
 description: Generate or update project documentation verified against the codebase
 argument-hint: "[--force] [--verify-only]"
 allowed-tools:
@@ -26,7 +26,7 @@ Flag handling rule:
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/docs-update.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/docs-update.md
 </execution_context>
 
 <context>

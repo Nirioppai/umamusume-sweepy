@@ -1,5 +1,5 @@
 ---
-name: gsd:add-tests
+name: gsd-add-tests
 description: Generate tests for a completed phase based on UAT criteria and implementation
 argument-hint: "<phase> [additional instructions]"
 allowed-tools:
@@ -13,8 +13,8 @@ allowed-tools:
   - AskUserQuestion
 argument-instructions: |
   Parse the argument as a phase number (integer, decimal, or letter-suffix), plus optional free-text instructions.
-  Example: /gsd:add-tests 12
-  Example: /gsd:add-tests 12 focus on edge cases in the pricing module
+  Example: /gsd-add-tests 12
+  Example: /gsd-add-tests 12 focus on edge cases in the pricing module
 requires: [phase]
 ---
 <objective>
@@ -26,7 +26,7 @@ Output: Test files committed with message `test(phase-{N}): add unit and E2E tes
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/add-tests.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/add-tests.md
 </execution_context>
 
 <context>

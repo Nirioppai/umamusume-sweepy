@@ -1,0 +1,16 @@
+--- CRASH AT 2026-06-05 13:56:19 ---
+Traceback (most recent call last):
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 246, in _run
+    self._log(decision.action, chara["turn"], decision.reason)
+                               ~~~~~^^^^^^^^
+KeyError: 'turn'
+
+
+--- CRASH AT 2026-06-05 14:28:52 ---
+Traceback (most recent call last):
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 240, in _run
+    self._log(decision.action, chara["turn"], decision.reason)
+                               ~~~~~^^^^^^^^
+KeyError: 'turn'
+
+

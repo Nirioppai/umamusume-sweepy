@@ -1,5 +1,5 @@
 ---
-name: gsd:extract-learnings
+name: gsd-extract-learnings
 description: Extract decisions, lessons, patterns, and surprises from completed phase artifacts
 argument-hint: <phase-number>
 allowed-tools:
@@ -17,7 +17,7 @@ Extract structured learnings from completed phase artifacts (PLAN.md, SUMMARY.md
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/extract-learnings.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/extract-learnings.md
 </execution_context>
 
-Execute the extract-learnings workflow from @C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/extract-learnings.md end-to-end.
+Execute the extract-learnings workflow from @C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/extract-learnings.md end-to-end.

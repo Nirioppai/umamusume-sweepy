@@ -1,6 +1,6 @@
 ---
 type: prompt
-name: gsd:milestone-summary
+name: gsd-milestone-summary
 description: Generate a comprehensive project summary from milestone artifacts for team onboarding and review
 argument-hint: "[version]"
 allowed-tools:
@@ -19,7 +19,7 @@ Output: MILESTONE_SUMMARY written to `.planning/reports/`, presented inline, opt
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/milestone-summary.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/milestone-summary.md
 </execution_context>
 
 <context>

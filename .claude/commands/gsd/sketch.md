@@ -1,5 +1,5 @@
 ---
-name: gsd:sketch
+name: gsd-sketch
 description: Sketch UI/design ideas with throwaway HTML mockups, or propose what to sketch next (frontier mode)
 argument-hint: "[design idea to explore] [--quick] [--text] [--wrap-up] or [frontier]"
 allowed-tools:
@@ -30,13 +30,13 @@ Does not require prior new-project setup — auto-creates `.planning/sketches/` 
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/sketch.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/sketch-wrap-up.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/sketch-theme-system.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/sketch-interactivity.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/sketch-tooling.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/sketch-variant-patterns.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/sketch.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/sketch-wrap-up.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/sketch-theme-system.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/sketch-interactivity.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/sketch-tooling.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/sketch-variant-patterns.md
 </execution_context>
 
 <runtime_note>

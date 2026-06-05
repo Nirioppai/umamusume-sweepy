@@ -1,5 +1,5 @@
 ---
-name: gsd:ingest-docs
+name: gsd-ingest-docs
 description: Bootstrap or merge a .planning/ setup from existing ADRs, PRDs, SPECs, and docs in a repo.
 argument-hint: "[path] [--mode new|merge] [--manifest <file>] [--resolve auto|interactive]"
 allowed-tools:
@@ -27,10 +27,10 @@ Auto-synthesizes most conflicts using the precedence rule `ADR > SPEC > PRD > DO
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/ingest-docs.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/gate-prompts.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/doc-conflict-engine.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/ingest-docs.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/gate-prompts.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/doc-conflict-engine.md
 </execution_context>
 
 <context>

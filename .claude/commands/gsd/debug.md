@@ -1,5 +1,5 @@
 ---
-name: gsd:debug
+name: gsd-debug
 description: Systematic debugging with persistent state across context resets
 argument-hint: "[list | status <slug> | continue <slug> | --diagnose] [issue description]"
 allowed-tools:
@@ -28,7 +28,7 @@ Valid GSD subagent types (use exact names — do not fall back to 'general-purpo
 </available_agent_types>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/debug.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/debug.md
 </execution_context>
 
 <context>

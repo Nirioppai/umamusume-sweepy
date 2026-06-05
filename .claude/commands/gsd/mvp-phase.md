@@ -1,5 +1,5 @@
 ---
-name: gsd:mvp-phase
+name: gsd-mvp-phase
 description: Plan a phase as a vertical MVP slice — user story, SPIDR splitting, then plan-phase
 argument-hint: "<phase-number>"
 allowed-tools:
@@ -24,9 +24,9 @@ Phase 1 of the vertical-mvp-slice PRD shipped the planner-side machinery; this c
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/mvp-phase.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/spidr-splitting.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/user-story-template.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/mvp-phase.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/spidr-splitting.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/user-story-template.md
 </execution_context>
 
 <runtime_note>
@@ -40,6 +40,6 @@ The phase must already exist in ROADMAP.md (created via `/gsd new-project`, `/gs
 </context>
 
 <process>
-Execute the mvp-phase workflow from @C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/mvp-phase.md end-to-end.
+Execute the mvp-phase workflow from @C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/mvp-phase.md end-to-end.
 Preserve all gates: phase existence, status guard (refuse in_progress/completed), user-story format validation, SPIDR splitting check, ROADMAP write confirmation, plan-phase delegation.
 </process>

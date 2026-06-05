@@ -1,5 +1,5 @@
 ---
-name: gsd:settings
+name: gsd-settings
 description: Configure GSD workflow toggles and model profile
 allowed-tools:
   - Read
@@ -21,7 +21,7 @@ Routes to the settings workflow which handles:
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/settings.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/settings.md
 </execution_context>
 
 <process>

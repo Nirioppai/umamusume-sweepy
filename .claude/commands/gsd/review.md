@@ -1,7 +1,7 @@
 ---
-name: gsd:review
+name: gsd-review
 description: Request cross-AI peer review of phase plans from external AI CLIs
-argument-hint: "--phase N [--gemini] [--claude] [--codex] [--opencode] [--qwen] [--cursor] [--all]"
+argument-hint: "--phase N [--gemini] [--claude] [--codex] [--opencode] [--qwen] [--cursor] [--agy] [--all]"
 allowed-tools:
   - Read
   - Write
@@ -14,13 +14,13 @@ requires: [config, phase, plan-phase]
 <objective>
 Invoke external AI CLIs (Gemini, Claude, Codex, OpenCode, Qwen Code, Cursor) to independently review phase plans.
 Produces a structured REVIEWS.md with per-reviewer feedback that can be fed back into
-planning via /gsd:plan-phase --reviews.
+planning via /gsd-plan-phase --reviews.
 
 **Flow:** Detect CLIs → Build review prompt → Invoke each CLI → Collect responses → Write REVIEWS.md
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/review.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/review.md
 </execution_context>
 
 <context>
@@ -33,6 +33,7 @@ Phase number: extracted from $ARGUMENTS (required)
 - `--opencode` — Include OpenCode review (uses model from user's OpenCode config)
 - `--qwen` — Include Qwen Code review (Alibaba Qwen models)
 - `--cursor` — Include Cursor agent review
+- `--agy` / `--antigravity` — Include Antigravity CLI review
 - `--all` — Include all available CLIs
 </context>
 

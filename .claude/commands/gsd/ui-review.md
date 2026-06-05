@@ -1,5 +1,5 @@
 ---
-name: gsd:ui-review
+name: gsd-ui-review
 description: Retroactive 6-pillar visual audit of implemented frontend code
 argument-hint: "[phase]"
 allowed-tools:
@@ -19,8 +19,8 @@ Output: {phase_num}-UI-REVIEW.md
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/ui-review.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/ui-review.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
 </execution_context>
 
 <context>

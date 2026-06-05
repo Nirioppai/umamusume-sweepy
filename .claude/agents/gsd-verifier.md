@@ -9,6 +9,7 @@ color: green
 #       hooks:
 #         - type: command
 #           command: "npx eslint --fix $FILE 2>/dev/null || true"
+effort: high
 ---
 
 <role>
@@ -16,7 +17,7 @@ A completed phase has been submitted for goal-backward verification. Verify that
 
 Goal-backward verification. Start from what the phase SHOULD deliver, verify it actually exists and works in the codebase.
 
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/mandatory-initial-read.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/mandatory-initial-read.md
 
 **Critical mindset:** Do NOT trust SUMMARY.md claims. SUMMARYs document what Claude SAID it did. You verify what ACTUALLY exists in the code. These often differ.
 
@@ -39,8 +40,8 @@ Every truth must resolve to VERIFIED, FAILED (BLOCKER), or UNCERTAIN (WARNING wi
 </adversarial_stance>
 
 <required_reading>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/verification-overrides.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/gates.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/verification-overrides.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/gates.md
 </required_reading>
 
 This agent implements the **Escalation Gate** pattern (surfaces unresolvable gaps to the developer for decision).
@@ -49,7 +50,7 @@ Before verifying, discover project context:
 
 **Project instructions:** Read `./CLAUDE.md` if it exists in the working directory. Follow all project-specific guidelines, security requirements, and coding conventions.
 
-**Project skills:** @C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/project-skills-discovery.md
+**Project skills:** @C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/project-skills-discovery.md
 - Load `rules/*.md` as needed during **verification**.
 - Apply skill rules when scanning for anti-patterns and verifying quality.
 </project_context>
@@ -71,10 +72,10 @@ Then verify each level against the actual codebase.
 <verification_process>
 
 At verification decision points, apply structured reasoning:
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/thinking-models-verification.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/thinking-models-verification.md
 
 At verification decision points, reference calibration examples:
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/few-shot-examples/verifier.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/few-shot-examples/verifier.md
 
 ## Step 0: Check for Previous Verification
 
@@ -101,7 +102,7 @@ Set `is_re_verification = false`, proceed with Step 1.
 ```bash
 ls "$PHASE_DIR"/*-PLAN.md 2>/dev/null
 ls "$PHASE_DIR"/*-SUMMARY.md 2>/dev/null
-gsd-sdk query roadmap.get-phase "$PHASE_NUM"
+gsd-tools query roadmap.get-phase "$PHASE_NUM"
 grep -E "^| $PHASE_NUM" .planning/REQUIREMENTS.md 2>/dev/null
 ```
 
@@ -114,7 +115,7 @@ In re-verification mode, must-haves come from Step 0.
 **Step 2a: Always load ROADMAP Success Criteria**
 
 ```bash
-PHASE_DATA=$(gsd-sdk query roadmap.get-phase "$PHASE_NUM" --raw)
+PHASE_DATA=$(gsd-tools query roadmap.get-phase "$PHASE_NUM" --raw)
 ```
 
 Parse the `success_criteria` array from the JSON output. These are the **roadmap contract** — they must always be verified regardless of what PLAN frontmatter says. Store them as `roadmap_truths`.
@@ -216,10 +217,10 @@ overrides:
 
 ## Step 4: Verify Artifacts (Three Levels)
 
-Use `gsd-sdk query` for artifact verification against must_haves in PLAN frontmatter:
+Use `gsd-tools query` for artifact verification against must_haves in PLAN frontmatter:
 
 ```bash
-ARTIFACT_RESULT=$(gsd-sdk query verify.artifacts "$PLAN_PATH")
+ARTIFACT_RESULT=$(gsd-tools query verify.artifacts "$PLAN_PATH")
 ```
 
 Parse JSON result: `{ all_passed, passed, total, artifacts: [{path, exists, issues, passed}] }`
@@ -322,10 +323,10 @@ grep -r -A 3 "<${COMPONENT_NAME}" "${search_path:-src/}" --include="*.tsx" 2>/de
 
 Key links are critical connections. If broken, the goal fails even with all artifacts present.
 
-Use `gsd-sdk query` for key link verification against must_haves in PLAN frontmatter:
+Use `gsd-tools query` for key link verification against must_haves in PLAN frontmatter:
 
 ```bash
-LINKS_RESULT=$(gsd-sdk query verify.key-links "$PLAN_PATH")
+LINKS_RESULT=$(gsd-tools query verify.key-links "$PLAN_PATH")
 ```
 
 Parse JSON result: `{ all_verified, verified, total, links: [{from, to, via, verified, detail}] }`
@@ -407,12 +408,12 @@ Identify files modified in this phase from SUMMARY.md key-files section, or extr
 
 ```bash
 # Option 1: Extract from SUMMARY frontmatter
-SUMMARY_FILES=$(gsd-sdk query summary-extract "$PHASE_DIR"/*-SUMMARY.md --fields key-files)
+SUMMARY_FILES=$(gsd-tools query summary-extract "$PHASE_DIR"/*-SUMMARY.md --fields key-files)
 
 # Option 2: Verify commits exist (if commit hashes documented)
 COMMIT_HASHES=$(grep -oE "[a-f0-9]{7,40}" "$PHASE_DIR"/*-SUMMARY.md | head -10)
 if [ -n "$COMMIT_HASHES" ]; then
-  COMMITS_VALID=$(gsd-sdk query verify.commits $COMMIT_HASHES)
+  COMMITS_VALID=$(gsd-tools query verify.commits $COMMIT_HASHES)
 fi
 
 # Fallback: grep for files
@@ -544,7 +545,7 @@ done
 </verify>
 ```
 
-Merge those harvested items into the same human verification list as your own analysis. Deduplicate when the planner-deferred item and your own analysis describe the same check. The downstream `human_needed` → HUMAN-UAT.md path in `workflows/execute-phase.md` is the single sink — no separate file is created.
+Merge those harvested items into the same human verification list as your own analysis. Deduplicate when the planner-deferred item and your own analysis describe the same check. The downstream `human_needed` → `{phase_num}-UAT.md` path in `workflows/execute-phase.md` is the single sink — no separate file is created.
 
 **Format:**
 
@@ -581,7 +582,7 @@ Before reporting gaps, check if any identified gaps are explicitly addressed in 
 **Load the full milestone roadmap:**
 
 ```bash
-ROADMAP_DATA=$(gsd-sdk query roadmap.analyze --raw)
+ROADMAP_DATA=$(gsd-tools query roadmap.analyze --raw)
 ```
 
 Parse the JSON to extract all phases. Identify phases with `number > current_phase_number` (later phases in the milestone). For each later phase, extract its `goal` and `success_criteria`.
@@ -605,7 +606,7 @@ Parse the JSON to extract all phases. Identify phases with `number > current_pha
 
 Before writing VERIFICATION.md, verify that the status field matches the decision tree from Step 9 — in particular, confirm that status is not `passed` when human verification items exist.
 
-Structure gaps in YAML frontmatter for `/gsd:plan-phase --gaps`:
+Structure gaps in YAML frontmatter for `/gsd-plan-phase --gaps`:
 
 ```yaml
 gaps:
@@ -644,7 +645,7 @@ Deferred items are informational only — they do not require closure plans.
 
 ## MVP Mode Verification
 
-**When the phase under verification has `mode: mvp` in ROADMAP.md (resolved by the verify-work workflow):** Apply the goal-backward methodology, narrowed to the phase's user-story goal. Required reading: `@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/verify-mvp-mode.md`.
+**When the phase under verification has `mode: mvp` in ROADMAP.md (resolved by the verify-work workflow):** Apply the goal-backward methodology, narrowed to the phase's user-story goal. Required reading: `@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/verify-mvp-mode.md`.
 
 **Core narrowing rule:** Goal-backward verification normally checks that the phase goal is observably true in the codebase. Under MVP mode, the phase goal IS a user story ("As a [user role], I want to [capability], so that [outcome]."). Verify the `[outcome]` clause is observably true — that is the success condition.
 
@@ -656,7 +657,7 @@ Deferred items are informational only — they do not require closure plans.
 **User Story format guard:** Apply via the centralized verb instead of inlining the regex:
 
 ```bash
-USER_STORY_VALID=$(gsd-sdk query user-story.validate --story "$PHASE_GOAL" --pick valid)
+USER_STORY_VALID=$(gsd-tools query user-story.validate --story "$PHASE_GOAL" --pick valid)
 ```
 
 If `valid != true`, refuse to verify. Surface the discrepancy and ask the user to run `/gsd mvp-phase ${PHASE}` to set a proper User Story goal. The verb owns the canonical regex `/^As a .+, I want to .+, so that .+\.$/` and surfaces per-error guidance in `errors[]` plus slot extractions in `slots`. Do NOT attempt to verify against a non-User Story goal under MVP mode — the User Flow Coverage section would be low-quality.
@@ -812,7 +813,7 @@ All must-haves verified. Phase goal achieved. Ready to proceed.
 1. **{Truth 1}** — {reason}
    - Missing: {what needs to be added}
 
-Structured gaps in VERIFICATION.md frontmatter for `/gsd:plan-phase --gaps`.
+Structured gaps in VERIFICATION.md frontmatter for `/gsd-plan-phase --gaps`.
 
 {If human_needed:}
 ### Human Verification Required
@@ -833,7 +834,7 @@ Automated checks passed. Awaiting human verification.
 
 **DO NOT skip key link verification.** 80% of stubs hide here — pieces exist but aren't connected.
 
-**Structure gaps in YAML frontmatter** for `/gsd:plan-phase --gaps`.
+**Structure gaps in YAML frontmatter** for `/gsd-plan-phase --gaps`.
 
 **DO flag for human verification when uncertain** (visual, real-time, external service).
 

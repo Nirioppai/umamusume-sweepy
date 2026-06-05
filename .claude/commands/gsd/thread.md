@@ -1,5 +1,5 @@
 ---
-name: gsd:thread
+name: gsd-thread
 description: Manage persistent context threads for cross-session work
 argument-hint: "[list [--open | --resolved] | close <slug> | status <slug> | name | description]"
 allowed-tools:
@@ -16,7 +16,7 @@ doesn't belong to any specific phase.
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/thread.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/thread.md
 </execution_context>
 
 <process>

@@ -1,5 +1,5 @@
 ---
-name: gsd:phase
+name: gsd-phase
 description: CRUD for phases in ROADMAP.md — add, insert, remove, or edit phases
 argument-hint: "[--insert | --remove | --edit] <phase-name-or-number>"
 allowed-tools:
@@ -31,10 +31,10 @@ Mode routing:
 </routing>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/add-phase.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/insert-phase.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/remove-phase.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/edit-phase.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/add-phase.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/insert-phase.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/remove-phase.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/edit-phase.md
 </execution_context>
 
 <context>

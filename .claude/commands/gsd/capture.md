@@ -1,5 +1,5 @@
 ---
-name: gsd:capture
+name: gsd-capture
 description: Capture ideas, tasks, notes, and seeds to their destination
 argument-hint: "[--note | --backlog | --seed | --list] [text]"
 allowed-tools:
@@ -36,12 +36,12 @@ Mode routing:
 </routing>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/add-todo.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/note.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/add-backlog.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/plant-seed.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/check-todos.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/add-todo.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/note.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/add-backlog.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/plant-seed.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/check-todos.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
 </execution_context>
 
 <context>

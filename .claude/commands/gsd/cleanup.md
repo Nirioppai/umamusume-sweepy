@@ -1,5 +1,5 @@
 ---
-name: gsd:cleanup
+name: gsd-cleanup
 description: Archive accumulated phase directories from completed milestones
 allowed-tools:
   - Read
@@ -15,7 +15,7 @@ Use when `.planning/phases/` has accumulated directories from past milestones.
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/cleanup.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/cleanup.md
 </execution_context>
 
 <process>

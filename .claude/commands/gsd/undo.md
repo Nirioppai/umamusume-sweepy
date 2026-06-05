@@ -1,5 +1,5 @@
 ---
-name: gsd:undo
+name: gsd-undo
 description: "Safe git revert. Roll back phase or plan commits using the phase manifest with dependency checks."
 argument-hint: "--last N | --phase NN | --plan NN-MM"
 allowed-tools:
@@ -21,9 +21,9 @@ Three modes:
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/undo.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/gate-prompts.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/undo.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/gate-prompts.md
 </execution_context>
 
 <context>

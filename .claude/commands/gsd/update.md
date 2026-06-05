@@ -1,5 +1,5 @@
 ---
-name: gsd:update
+name: gsd-update
 description: Update GSD to latest version with changelog display
 argument-hint: "[--sync | --reapply]"
 allowed-tools:
@@ -25,7 +25,7 @@ Routes to the update workflow which handles:
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/update.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/update.md
 </execution_context>
 
 <flags>
@@ -43,6 +43,6 @@ Parse the first token of $ARGUMENTS:
 </process>
 
 <execution_context_extended>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/sync-skills.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/reapply-patches.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/sync-skills.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/reapply-patches.md
 </execution_context_extended>

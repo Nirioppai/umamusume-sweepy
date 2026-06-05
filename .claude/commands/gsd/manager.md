@@ -1,5 +1,5 @@
 ---
-name: gsd:manager
+name: gsd-manager
 description: Interactive command center for managing multiple phases from one terminal
 argument-hint: "[--analyze-deps]"
 allowed-tools:
@@ -26,19 +26,19 @@ Designed for power users who want to parallelize work across phases from one ter
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/manager.md
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/references/ui-brand.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/manager.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/references/ui-brand.md
 </execution_context>
 
 <context>
 No arguments required. Requires an active milestone with ROADMAP.md and STATE.md.
 
-Project context, phase list, dependencies, and recommendations are resolved inside the workflow using `gsd-sdk query init.manager`. No upfront context loading needed.
+Project context, phase list, dependencies, and recommendations are resolved inside the workflow using `gsd-tools query init.manager`. No upfront context loading needed.
 </context>
 
 <process>
 If `--analyze-deps` is in $ARGUMENTS:
-Read and execute `C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/analyze-dependencies.md` end-to-end.
+Read and execute `C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/analyze-dependencies.md` end-to-end.
 
 Execute end-to-end.
 Maintain the dashboard refresh loop until the user exits or all phases complete.

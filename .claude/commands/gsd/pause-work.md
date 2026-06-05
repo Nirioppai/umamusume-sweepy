@@ -1,5 +1,5 @@
 ---
-name: gsd:pause-work
+name: gsd-pause-work
 description: Create context handoff when pausing work mid-phase
 argument-hint: "[--report]"
 allowed-tools:
@@ -21,7 +21,7 @@ Routes to the pause-work workflow which handles:
 </objective>
 
 <execution_context>
-@C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/pause-work.md
+@C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/pause-work.md
 </execution_context>
 
 <context>
@@ -30,7 +30,7 @@ State and phase progress are gathered in-workflow with targeted reads.
 
 <process>
 If `--report` is in $ARGUMENTS:
-Read and execute `C:/Active Codebase/umamusume-sweepy/.claude/get-shit-done/workflows/session-report.md` end-to-end.
+Read and execute `C:/Active Codebase/umamusume-sweepy/.claude/gsd-core/workflows/session-report.md` end-to-end.
 
 **Follow the pause-work workflow**.
 
