@@ -1,0 +1,16 @@
+{
+  "name": "Daily Borrow Part 2",
+  "data": {
+    "parent_id_1": 991,
+    "parent_id_2": 1106,
+    "deck_id": "1",
+    "trainee_id": "101502",
+    "friend_viewer_id": null,
+    "friend_support_id": null,
+    "delay_min": 0,
+    "delay_max": 2,
+    "burn_clocks": true,
+    "loop_enabled": true,
+    "loop_max": 2
+  }
+}

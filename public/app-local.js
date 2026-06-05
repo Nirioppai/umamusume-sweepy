@@ -253,10 +253,10 @@
         section.innerHTML = `
             <h2 class="dashboard-section-title">TEAM SETUP</h2>
             <div class="master-data-panel">
-                <div class="preset-control-row preset-control-row-actions">
-                    <select id="team-setup-select" class="form-input master-data-input preset-input"></select>
-                    <button id="team-setup-save-btn" class="btn btn-sm preset-action-btn" type="button">SAVE</button>
-                    <button id="team-setup-del-btn" class="btn btn-sm btn-danger preset-action-btn" type="button">DEL</button>
+                <select id="team-setup-select" class="form-input team-setup-select"></select>
+                <div class="team-setup-actions">
+                    <button id="team-setup-save-btn" class="btn btn-sm" type="button">SAVE</button>
+                    <button id="team-setup-del-btn" class="btn btn-sm btn-danger" type="button">DEL</button>
                 </div>
             </div>
         `;
@@ -361,6 +361,17 @@
                 white-space: nowrap;
                 flex-shrink: 0;
             }
+            .team-setup-select {
+                width: 100%;
+                margin-bottom: 0.4rem;
+            }
+            .team-setup-actions {
+                display: flex;
+                gap: 0.5rem;
+            }
+            .team-setup-actions .btn {
+                flex: 1;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -398,10 +409,13 @@
             });
 
             // Auto-apply on initial load: app.js sets innerHTML then .value without firing change
+            // Skip if there is an ongoing career — autoLoadCareerSelection() in app.js handles that.
             const observer = new MutationObserver(() => {
                 if (presetSelect.options.length > 0 && presetSelect.value) {
                     observer.disconnect();
-                    setTimeout(() => applyPresetSelection(presetSelect.value), 300);
+                    if (!document.getElementById('career-pill')) {
+                        setTimeout(() => applyPresetSelection(presetSelect.value), 300);
+                    }
                 }
             });
             observer.observe(presetSelect, { childList: true });
