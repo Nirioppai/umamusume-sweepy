@@ -1535,6 +1535,41 @@ async def root():
         return FileResponse(index_path, media_type="text/html", headers={"Cache-Control": "no-cache"})
     return "index.html not found"
 
+@app.get("/log-viewer", response_class=HTMLResponse)
+async def log_viewer():
+    path = base_dir / "public" / "log-viewer.html"
+    if path.exists():
+        return FileResponse(path, media_type="text/html", headers={"Cache-Control": "no-cache"})
+    raise HTTPException(status_code=404, detail="log-viewer.html not found")
+
+@app.get("/api/logs/list")
+async def list_logs():
+    logs_dir = base_dir / "uma_runtime" / "bot_logs"
+    if not logs_dir.exists():
+        return {"logs": []}
+    files = sorted([f.name for f in logs_dir.glob("career_log_*.json")], reverse=True)
+    result = []
+    if (logs_dir / "latest_career_log.json").exists():
+        result.append("latest_career_log.json")
+    result.extend(files)
+    return {"logs": result}
+
+@app.get("/api/logs/latest")
+async def get_latest_log():
+    log_path = base_dir / "uma_runtime" / "bot_logs" / "latest_career_log.json"
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail="No latest log found")
+    return FileResponse(log_path, media_type="application/json", headers={"Cache-Control": "no-cache"})
+
+@app.get("/api/logs/{filename}")
+async def get_log_file(filename: str):
+    if not re.match(r'^[\w\-]+\.json$', filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    log_path = base_dir / "uma_runtime" / "bot_logs" / filename
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail="Log not found")
+    return FileResponse(log_path, media_type="application/json", headers={"Cache-Control": "no-cache"})
+
 def set_console_topmost():
     if os.name != 'nt':
         return
@@ -1722,4 +1757,11 @@ if __name__ == "__main__":
     if not refresh_auth_before_serving():
         raise SystemExit(1)
     print("Access the Web UI at: http://127.0.0.1:1616", flush=True)
+    print("Log Viewer at: http://127.0.0.1:1616/log-viewer", flush=True)
+    def _open_browser():
+        import time as _t
+        _t.sleep(1.5)
+        import webbrowser
+        webbrowser.open("http://127.0.0.1:1616/log-viewer")
+    threading.Thread(target=_open_browser, daemon=True).start()
     uvicorn.run(app, host="127.0.0.1", port=1616, log_level="error")

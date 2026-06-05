@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Career Log Viewer</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --border: #2e2e40;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+    --pink: #f472b6;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --speed-c: #60a5fa;
+    --stamina-c: #f472b6;
+    --power-c: #fb923c;
+    --guts-c: #4ade80;
+    --wit-c: #fbbf24;
+    --sp-c: #a78bfa;
+    --hp-c: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px; }
+  .log-select-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  select, button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  select:hover, button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 5px 14px; }
+  button.primary:hover { background: var(--accent2); }
+
+  .career-summary { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  .summary-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 11px; }
+  .summary-badge span { color: var(--text2); margin-right: 5px; }
+  .summary-badge strong { color: var(--text); }
+  .status-ok { color: var(--green) !important; }
+  .status-stopped { color: var(--yellow) !important; }
+  .status-error { color: var(--red) !important; }
+
+  .main { padding: 16px 20px; }
+  .turns-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .turns-header h2 { font-size: 14px; font-weight: 600; color: var(--text2); }
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filter-btn { padding: 3px 10px; border-radius: 20px; font-size: 11px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .turns-list { display: flex; flex-direction: column; gap: 4px; }
+
+  .turn-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
+  .turn-row:hover { border-color: var(--accent); }
+  .turn-row.has-items { border-left: 3px solid var(--yellow); }
+  .turn-row.is-race { border-left: 3px solid var(--pink); }
+  .turn-row.has-items.is-race { border-left: 3px solid var(--pink); }
+
+  .turn-header { display: grid; grid-template-columns: 52px 110px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 12px; cursor: pointer; user-select: none; }
+  .turn-num { font-size: 18px; font-weight: 800; color: var(--text3); text-align: center; line-height: 1; }
+  .turn-time { color: var(--text3); font-size: 11px; font-family: monospace; }
+  .turn-action { display: flex; flex-direction: column; gap: 2px; }
+  .action-label { font-weight: 600; font-size: 13px; }
+  .action-sub { font-size: 11px; color: var(--text3); }
+  .action-training { color: var(--blue); }
+  .action-rest { color: var(--green); }
+  .action-race { color: var(--pink); }
+  .action-other { color: var(--text2); }
+
+  .turn-items-summary { display: flex; gap: 6px; flex-wrap: wrap; }
+  .item-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; font-size: 10px; color: var(--text2); white-space: nowrap; }
+  .item-chip.bought { border-color: #854d0e; background: #1c1206; color: var(--yellow); }
+  .item-chip.used { border-color: #1e3a5f; background: #0a1628; color: var(--blue); }
+
+  .turn-stats-mini { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .stat-mini { font-size: 11px; font-weight: 600; }
+  .stat-mini.spd { color: var(--speed-c); }
+  .stat-mini.sta { color: var(--stamina-c); }
+  .stat-mini.pow { color: var(--power-c); }
+  .stat-mini.gut { color: var(--guts-c); }
+  .stat-mini.wit { color: var(--wit-c); }
+  .stat-mini.sp  { color: var(--sp-c); }
+  .stat-mini.hp  { color: var(--hp-c); }
+
+  .delta-pos { color: var(--green); font-size: 10px; }
+  .delta-neg { color: var(--red); font-size: 10px; }
+
+  .turn-details { background: var(--surface2); border-top: 1px solid var(--border); padding: 12px 16px; display: none; }
+  .turn-details.open { display: block; }
+
+  .details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .detail-section h4 { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+  .stat-bars { display: flex; flex-direction: column; gap: 5px; }
+  .stat-bar-row { display: flex; align-items: center; gap: 8px; }
+  .stat-bar-label { width: 60px; font-size: 11px; text-align: right; color: var(--text2); }
+  .stat-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .stat-bar-value { width: 38px; font-size: 11px; font-weight: 600; text-align: right; }
+  .stat-bar-fill.spd { background: var(--speed-c); }
+  .stat-bar-fill.sta { background: var(--stamina-c); }
+  .stat-bar-fill.pow { background: var(--power-c); }
+  .stat-bar-fill.gut { background: var(--guts-c); }
+  .stat-bar-fill.wit { background: var(--wit-c); }
+  .stat-bar-fill.sp  { background: var(--sp-c); }
+  .stat-bar-fill.hp  { background: var(--hp-c); }
+
+  .item-list { display: flex; flex-direction: column; gap: 4px; }
+  .item-entry { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .item-entry:last-child { border-bottom: none; }
+  .item-name { color: var(--text); }
+  .item-meta { color: var(--text3); font-size: 11px; }
+  .item-cost { color: var(--yellow); font-weight: 600; }
+  .item-uses { color: var(--blue); font-weight: 600; }
+
+  .result-ok { color: var(--green); font-size: 11px; }
+  .result-fail { color: var(--red); font-size: 11px; }
+  .result-skip { color: var(--text3); font-size: 11px; }
+
+  .api-calls-list { display: flex; flex-direction: column; gap: 2px; }
+  .api-call-row { font-size: 10px; font-family: monospace; color: var(--text3); display: flex; gap: 8px; }
+  .api-call-row .dir-req { color: var(--accent); }
+  .api-call-row .dir-res { color: var(--green); }
+  .api-call-row .ep { color: var(--text2); }
+
+  .inventory-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .inv-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--text2); }
+
+  .empty-state { text-align: center; color: var(--text3); padding: 60px 20px; font-size: 14px; }
+  .empty-state p { margin-top: 8px; font-size: 12px; }
+  .loading { text-align: center; color: var(--accent); padding: 40px; font-size: 14px; }
+
+  .expand-icon { color: var(--text3); font-size: 16px; transition: transform 0.2s; user-select: none; }
+  .turn-row.expanded .expand-icon { transform: rotate(180deg); }
+
+  .motivation-stars { color: var(--yellow); font-size: 13px; }
+  .mant-coin { color: var(--yellow); font-size: 11px; font-weight: 600; }
+
+  .race-result-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .race-result-row { font-size: 12px; display: flex; gap: 10px; }
+  .race-result-label { color: var(--text3); width: 80px; }
+  .race-result-val { color: var(--text); }
+
+  @media (max-width: 700px) {
+    .turn-header { grid-template-columns: 40px 1fr; }
+    .turn-time, .turn-stats-mini { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Career Log Viewer</h1>
+  <div class="log-select-wrap">
+    <span style="color:var(--text3);font-size:11px;">Log file:</span>
+    <select id="logSelect"><option value="">Loading...</option></select>
+    <button class="primary" onclick="loadSelectedLog()">Load</button>
+    <label style="font-size:11px;color:var(--text3);cursor:pointer;">
+      <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadLocalFile(this)">
+      or <u>upload</u>
+    </label>
+    <input type="file" id="fileInputHidden" accept=".json" style="display:none" onchange="loadLocalFile(this)">
+  </div>
+</header>
+
+<div id="careerSummary" class="career-summary" style="display:none"></div>
+
+<div class="main">
+  <div class="turns-header">
+    <h2 id="turnsTitle">No log loaded</h2>
+    <div class="filter-bar">
+      <span style="font-size:11px;color:var(--text3);">Filter:</span>
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" data-filter="training" onclick="setFilter('training',this)">Training</button>
+      <button class="filter-btn" data-filter="race" onclick="setFilter('race',this)">Race</button>
+      <button class="filter-btn" data-filter="rest" onclick="setFilter('rest',this)">Rest</button>
+      <button class="filter-btn" data-filter="items" onclick="setFilter('items',this)">Has Items</button>
+    </div>
+  </div>
+  <div id="turnsList" class="turns-list">
+    <div class="empty-state">Select a log file above to get started.<p>Or drag and drop a .json log file here.</p></div>
+  </div>
+</div>
+
+<script>
+const ITEM_NAMES = {
+  1001:"Speed Notepad",1002:"Stamina Notepad",1003:"Power Notepad",1004:"Guts Notepad",1005:"Wit Notepad",
+  1101:"Speed Manual",1102:"Stamina Manual",1103:"Power Manual",1104:"Guts Manual",1105:"Wit Manual",
+  1201:"Speed Scroll",1202:"Stamina Scroll",1203:"Power Scroll",1204:"Guts Scroll",1205:"Wit Scroll",
+  2001:"Vita 20",2002:"Vita 40",2003:"Vita 65",2101:"Royal Kale Juice",
+  2201:"Energy Drink MAX",2202:"Energy Drink MAX EX",
+  2301:"Plain Cupcake",2302:"Berry Sweet Cupcake",
+  3001:"Yummy Cat Food",3101:"Grilled Carrots",
+  4001:"Pretty Mirror",4002:"Reporter's Binoculars",4003:"Master Practice Guide",4004:"Scholar's Hat",
+  4101:"Fluffy Pillow",4102:"Pocket Planner",4103:"Rich Hand Cream",4104:"Smart Scale",
+  4105:"Aroma Diffuser",4106:"Practice Drills DVD",4201:"Miracle Cure",
+  5001:"Speed Training Application",5002:"Stamina Training Application",5003:"Power Training Application",
+  5004:"Guts Training Application",5005:"Wit Training Application",
+  7001:"Reset Whistle",
+  8001:"Coaching Megaphone",8002:"Motivating Megaphone",8003:"Empowering Megaphone",
+  9001:"Speed Ankle Weights",9002:"Stamina Ankle Weights",9003:"Power Ankle Weights",9004:"Guts Ankle Weights",
+  10001:"Good-Luck Charm",11001:"Artisan Cleat Hammer",11002:"Master Cleat Hammer",11003:"Glow Sticks"
+};
+
+const COMMAND_NAMES = {
+  101:"Speed Training",102:"Power Training",103:"Guts Training",105:"Stamina Training",106:"Wit Training",
+  601:"Speed Training (Alt)",602:"Stamina Training (Alt)",603:"Power Training (Alt)",604:"Guts Training (Alt)",
+  701:"Rest",702:"Outing",703:"Consult",704:"Race Entry"
+};
+
+const SCENARIO_NAMES = {1:"URA Finals",2:"Aoharu Cup",3:"Grand Live",4:"Make a New Track",5:"Grand Masters",6:"Mecha Umamusume"};
+const MOTIVATION_LABELS = ["","😞","😕","😐","😊","🌟"];
+
+let logData = null;
+let currentFilter = 'all';
+
+async function fetchLogList() {
+  try {
+    const r = await fetch('/api/logs/list');
+    const d = await r.json();
+    const sel = document.getElementById('logSelect');
+    sel.innerHTML = '';
+    (d.logs || []).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name === 'latest_career_log.json' ? '★ Latest' : name;
+      sel.appendChild(opt);
+    });
+    if (d.logs && d.logs.length > 0) loadSelectedLog();
+  } catch(e) {
+    const sel = document.getElementById('logSelect');
+    sel.innerHTML = '<option value="">No server connection</option>';
+  }
+}
+
+async function loadSelectedLog() {
+  const sel = document.getElementById('logSelect');
+  const name = sel.value;
+  if (!name) return;
+  document.getElementById('turnsList').innerHTML = '<div class="loading">Loading log...</div>';
+  try {
+    const r = await fetch('/api/logs/' + encodeURIComponent(name));
+    const d = await r.json();
+    renderLog(d);
+  } catch(e) {
+    document.getElementById('turnsList').innerHTML = '<div class="empty-state">Failed to load log: ' + e.message + '</div>';
+  }
+}
+
+function loadLocalFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('turnsList').innerHTML = '<div class="loading">Loading...</div>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      renderLog(d);
+    } catch(err) {
+      document.getElementById('turnsList').innerHTML = '<div class="empty-state">Invalid JSON file.</div>';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderLog(data) {
+  logData = data;
+  renderSummary(data);
+  renderTurns(data.turns || []);
+}
+
+function renderSummary(data) {
+  const el = document.getElementById('careerSummary');
+  el.style.display = 'flex';
+  const statusClass = data.status === 'complete' ? 'status-ok' : data.status === 'stopped' ? 'status-stopped' : 'status-error';
+  const scenario = SCENARIO_NAMES[data.scenario_id] || ('Scenario ' + data.scenario_id);
+  const started = data.started_at ? new Date(data.started_at).toLocaleString() : '—';
+  const ended = data.ended_at ? new Date(data.ended_at).toLocaleString() : '—';
+  const durationMs = data.started_at && data.ended_at
+    ? new Date(data.ended_at) - new Date(data.started_at) : 0;
+  const durationStr = durationMs > 0 ? formatDuration(durationMs) : '—';
+  el.innerHTML = `
+    <div class="summary-badge"><span>Preset:</span><strong>${esc(data.preset_name || '—')}</strong></div>
+    <div class="summary-badge"><span>Scenario:</span><strong>${esc(scenario)}</strong></div>
+    <div class="summary-badge"><span>Status:</span><strong class="${statusClass}">${esc(data.status || '—')}</strong></div>
+    <div class="summary-badge"><span>Final Turn:</span><strong>${data.final_turn || '—'}</strong></div>
+    <div class="summary-badge"><span>Started:</span><strong>${esc(started)}</strong></div>
+    <div class="summary-badge"><span>Duration:</span><strong>${esc(durationStr)}</strong></div>
+    <div class="summary-badge"><span>Total Turns:</span><strong>${(data.turns || []).length}</strong></div>
+  `;
+}
+
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${m % 60}m`;
+  if (m > 0) return `${m}m ${s % 60}s`;
+  return `${s}s`;
+}
+
+function renderTurns(turns) {
+  document.getElementById('turnsTitle').textContent = `${turns.length} Turns`;
+  applyFilter(turns);
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (logData) applyFilter(logData.turns || []);
+}
+
+function applyFilter(turns) {
+  let filtered = turns;
+  if (currentFilter === 'training') filtered = turns.filter(t => (t.selected_action || '') === 'command' && !(t.decision_reason || '').startsWith('rest'));
+  else if (currentFilter === 'race') filtered = turns.filter(t => (t.selected_action || '') === 'race');
+  else if (currentFilter === 'rest') filtered = turns.filter(t => (t.decision_reason || '').startsWith('rest'));
+  else if (currentFilter === 'items') filtered = turns.filter(t => (t.bot_shop_selected || []).length > 0 || (t.bot_item_use_selected || []).length > 0);
+
+  document.getElementById('turnsTitle').textContent = filtered.length + ' Turn' + (filtered.length !== 1 ? 's' : '') + (currentFilter !== 'all' ? ' (filtered)' : '');
+
+  const container = document.getElementById('turnsList');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">No turns match this filter.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  const prevStatsMap = {};
+  // Build prev stats lookup
+  for (let i = 0; i < turns.length; i++) {
+    if (i > 0) prevStatsMap[turns[i].turn] = turns[i-1].stats;
+  }
+
+  filtered.forEach(turn => {
+    const el = buildTurnRow(turn, prevStatsMap[turn.turn] || null);
+    container.appendChild(el);
+  });
+}
+
+function buildTurnRow(turn, prevStats) {
+  const bought = turn.bot_shop_selected || [];
+  const used = turn.bot_item_use_selected || [];
+  const isRace = (turn.selected_action || '') === 'race';
+  const hasItems = bought.length > 0 || used.length > 0;
+
+  const row = document.createElement('div');
+  row.className = 'turn-row' + (hasItems ? ' has-items' : '') + (isRace ? ' is-race' : '');
+
+  // Get timestamp from first api call
+  const firstCall = (turn.api_calls || []).find(c => c.direction === 'REQ');
+  const ts = firstCall ? new Date(firstCall.ts * 1000) : null;
+  const timeStr = ts ? ts.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+
+  const {label, cls} = parseAction(turn);
+  const stats = turn.stats || {};
+  const prevS = prevStats || {};
+
+  const itemsHtml = [
+    ...bought.map(i => `<span class="item-chip bought">🛒 ${esc(i.name)}</span>`),
+    ...used.map(i => `<span class="item-chip used">✨ ${esc(i.name)}${i.use_num > 1 ? ' x'+i.use_num : ''}</span>`)
+  ].join('');
+
+  const motiv = turn.motivation || stats.motivation || 3;
+  const motivStar = MOTIVATION_LABELS[Math.min(5, Math.max(1, motiv))] || '';
+  const coin = turn.mant_coin != null ? `<span class="mant-coin">🪙${turn.mant_coin}</span>` : '';
+
+  row.innerHTML = `
+    <div class="turn-header">
+      <div class="turn-num">${turn.turn}</div>
+      <div class="turn-time">${esc(timeStr)}</div>
+      <div class="turn-action">
+        <span class="action-label ${cls}">${esc(label)}</span>
+        ${hasItems ? `<div class="turn-items-summary">${itemsHtml}</div>` : ''}
+      </div>
+      <div class="turn-stats-mini">
+        ${statMini('HP', stats.hp, stats.max_hp, prevS.hp, 'hp')}
+        ${statMini('SPD', stats.speed, 1200, prevS.speed, 'spd')}
+        ${statMini('STA', stats.stamina, 1200, prevS.stamina, 'sta')}
+        ${statMini('POW', stats.power, 1200, prevS.power, 'pow')}
+        ${statMini('GUT', stats.guts, 1200, prevS.guts, 'gut')}
+        ${statMini('WIT', stats.wit, 1200, prevS.wit, 'wit')}
+        ${statMini('SP', stats.skill_point, null, prevS.skill_point, 'sp')}
+        ${coin}
+        <span style="font-size:13px">${motivStar}</span>
+      </div>
+      <div class="expand-icon">▾</div>
+    </div>
+    <div class="turn-details">${buildDetails(turn, prevStats)}</div>
+  `;
+
+  row.querySelector('.turn-header').addEventListener('click', () => {
+    row.classList.toggle('expanded');
+    row.querySelector('.turn-details').classList.toggle('open');
+  });
+
+  return row;
+}
+
+function statMini(label, val, max, prev, cls) {
+  if (val == null) return '';
+  const delta = (prev != null && val !== prev) ? (val - prev) : null;
+  const deltaHtml = delta !== null ? `<span class="${delta >= 0 ? 'delta-pos' : 'delta-neg'}">${delta >= 0 ? '+' : ''}${delta}</span>` : '';
+  return `<span class="stat-mini ${cls}" title="${label}">${val}${deltaHtml}</span>`;
+}
+
+function parseAction(turn) {
+  const action = turn.selected_action || '';
+  const reason = turn.decision_reason || '';
+
+  if (action === 'race') {
+    const parts = reason.split(' ');
+    if (parts.length >= 3) {
+      const score = parts[0];
+      const raceName = parts.slice(2).join(' ');
+      return { label: `Race: ${raceName} (${score}pts)`, cls: 'action-race' };
+    }
+    return { label: 'Race', cls: 'action-race' };
+  }
+
+  if (reason.startsWith('rest')) {
+    return { label: 'Rest', cls: 'action-rest' };
+  }
+
+  if (reason.startsWith('training ')) {
+    const parts = reason.split(' ');
+    const statName = parts[1] || '';
+    const cmdId = parseInt(parts[2]) || 0;
+    return { label: `${statName} Training`, cls: 'action-training' };
+  }
+
+  if (reason) {
+    const parts = reason.split(' ');
+    const first = parts[0].toLowerCase();
+    if (['outing','consult'].includes(first)) {
+      return { label: reason.charAt(0).toUpperCase() + reason.slice(1), cls: 'action-other' };
+    }
+    // Race-like: "score program_id name"
+    if (!isNaN(parseInt(parts[0])) && parts.length >= 3) {
+      const raceName = parts.slice(2).join(' ');
+      return { label: `Race: ${raceName} (${parts[0]}pts)`, cls: 'action-race' };
+    }
+    return { label: reason, cls: 'action-other' };
+  }
+
+  return { label: action || 'Unknown', cls: 'action-other' };
+}
+
+function buildDetails(turn, prevStats) {
+  const stats = turn.stats || {};
+  const prevS = prevStats || {};
+  const bought = turn.bot_shop_selected || [];
+  const used = turn.bot_item_use_selected || [];
+  const inventory = turn.inventory || [];
+  const apiCalls = turn.api_calls || [];
+  const buyResult = turn.bot_shop_result || {};
+  const useResult = turn.bot_item_use_result || {};
+  const buyOptions = turn.bot_shop_candidates || [];
+  const useOptions = turn.decision_item_use_rows || [];
+
+  let html = '<div class="details-grid">';
+
+  // Stats section
+  const MAX_STATS = {speed:1200,stamina:1200,power:1200,guts:1200,wit:1200};
+  html += `<div class="detail-section">
+    <h4>Stats</h4>
+    <div class="stat-bars">
+      ${statBar('HP', stats.hp, stats.max_hp || 100, prevS.hp, 'hp')}
+      ${statBar('Speed', stats.speed, MAX_STATS.speed, prevS.speed, 'spd')}
+      ${statBar('Stamina', stats.stamina, MAX_STATS.stamina, prevS.stamina, 'sta')}
+      ${statBar('Power', stats.power, MAX_STATS.power, prevS.power, 'pow')}
+      ${statBar('Guts', stats.guts, MAX_STATS.guts, prevS.guts, 'gut')}
+      ${statBar('Wit', stats.wit, MAX_STATS.wit, prevS.wit, 'wit')}
+      ${statBar('Skill Pts', stats.skill_point, 999, prevS.skill_point, 'sp')}
+    </div>
+  </div>`;
+
+  // Action / Turn info
+  const {label, cls} = parseAction(turn);
+  const firstCall = apiCalls.find(c => c.direction === 'REQ');
+  const ts = firstCall ? new Date(firstCall.ts * 1000) : null;
+  const timeStr = ts ? ts.toLocaleString() : '—';
+  const motiv = turn.motivation || stats.motivation || 3;
+  html += `<div class="detail-section">
+    <h4>Turn Info</h4>
+    <div class="race-result-wrap">
+      <div class="race-result-row"><span class="race-result-label">Turn:</span><span class="race-result-val">${turn.turn}</span></div>
+      <div class="race-result-row"><span class="race-result-label">Time:</span><span class="race-result-val" style="font-size:11px">${esc(timeStr)}</span></div>
+      <div class="race-result-row"><span class="race-result-label">Action:</span><span class="race-result-val ${cls}">${esc(label)}</span></div>
+      <div class="race-result-row"><span class="race-result-label">Motivation:</span><span class="race-result-val">${MOTIVATION_LABELS[Math.min(5,Math.max(1,motiv))]} ${motiv}/5</span></div>
+      <div class="race-result-row"><span class="race-result-label">Mant Coin:</span><span class="race-result-val" style="color:var(--yellow)">${turn.mant_coin ?? '—'}</span></div>
+      <div class="race-result-row"><span class="race-result-label">Event:</span><span class="race-result-val">${esc(turn.event || '—')}</span></div>
+    </div>
+  </div>`;
+
+  // Items Bought
+  if (bought.length > 0 || buyOptions.length > 0) {
+    const resultStr = formatResult(buyResult);
+    html += `<div class="detail-section">
+      <h4>Items Bought ${resultStr}</h4>
+      <div class="item-list">
+        ${bought.length === 0 ? '<div style="color:var(--text3);font-size:11px">None selected</div>' :
+          bought.map(i => `<div class="item-entry">
+            <span class="item-name">${esc(i.name)}</span>
+            <span><span class="item-cost">🪙${i.cost}</span></span>
+          </div>`).join('')}
+      </div>
+      ${buyOptions.length > 0 ? `<div style="margin-top:8px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Shop options:</div>
+        <div class="item-list">
+          ${buyOptions.map(o => {
+            const picked = bought.some(b => b.name === (o.name || ITEM_NAMES[o.item_id]));
+            return `<div class="item-entry" style="${picked ? 'color:var(--yellow)' : 'opacity:0.5'}">
+              <span>${esc(o.name || ITEM_NAMES[o.item_id] || o.item_id)}</span>
+              <span style="font-size:10px;color:var(--text3)">${o.skip_reason ? '⊘ '+esc(o.skip_reason) : (picked ? '✓ bought' : '')}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Items Used
+  if (used.length > 0 || useOptions.length > 0) {
+    const resultStr = formatResult(useResult);
+    html += `<div class="detail-section">
+      <h4>Items Used ${resultStr}</h4>
+      <div class="item-list">
+        ${used.length === 0 ? '<div style="color:var(--text3);font-size:11px">None used</div>' :
+          used.map(i => `<div class="item-entry">
+            <span class="item-name">${esc(i.name)}</span>
+            <span class="item-uses">×${i.use_num}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Inventory
+  if (inventory.length > 0) {
+    html += `<div class="detail-section">
+      <h4>Inventory</h4>
+      <div class="inventory-wrap">
+        ${inventory.map(it => {
+          const name = it.name || ITEM_NAMES[it.item_id] || ('Item '+it.item_id);
+          return `<span class="inv-chip" title="id:${it.item_id}">${esc(name)} ×${it.num || it.current_num || it.qty || 1}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // API Calls
+  if (apiCalls.length > 0) {
+    html += `<div class="detail-section" style="grid-column:1/-1">
+      <h4>API Calls (${apiCalls.length})</h4>
+      <div class="api-calls-list">
+        ${apiCalls.map(c => {
+          const t = c.ts ? new Date(c.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:2}) : '';
+          const dirClass = c.direction === 'REQ' ? 'dir-req' : 'dir-res';
+          return `<div class="api-call-row">
+            <span class="${dirClass}">${c.direction}</span>
+            <span class="ep">${esc(c.endpoint || '')}</span>
+            <span>${esc(t)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function statBar(label, val, max, prev, cls) {
+  if (val == null) return '';
+  const pct = max ? Math.min(100, Math.round(val / max * 100)) : 0;
+  const delta = (prev != null && val !== prev) ? (val - prev) : null;
+  const deltaHtml = delta !== null ? ` <span class="${delta >= 0 ? 'delta-pos' : 'delta-neg'}">(${delta >= 0 ? '+' : ''}${delta})</span>` : '';
+  return `<div class="stat-bar-row">
+    <span class="stat-bar-label">${label}</span>
+    <div class="stat-bar-track"><div class="stat-bar-fill ${cls}" style="width:${pct}%"></div></div>
+    <span class="stat-bar-value stat-mini ${cls}">${val}${deltaHtml}</span>
+  </div>`;
+}
+
+function formatResult(result) {
+  if (!result || typeof result !== 'object') return '';
+  if (result.skip) return `<span class="result-skip">(skipped: ${esc(result.skip)})</span>`;
+  if (result.result === 'ok') return `<span class="result-ok">✓ ok</span>`;
+  if (result.result === 'failed') return `<span class="result-fail">✗ failed</span>`;
+  return '';
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Drag and drop
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.name.endsWith('.json')) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { renderLog(JSON.parse(ev.target.result)); } catch(e) {}
+  };
+  reader.readAsText(file);
+});
+
+// Make the upload label click work
+document.querySelector('label u').closest('label').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+// Init
+fetchLogList();
+</script>
+</body>
+</html>
