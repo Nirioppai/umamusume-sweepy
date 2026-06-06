@@ -211,10 +211,12 @@
 
   /* ── Multi-file header ── */
   .file-list { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .file-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .file-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 3px 10px; font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 5px; cursor: pointer; }
   .file-pill .fp-x { color: var(--text3); cursor: pointer; font-size: 13px; line-height: 1; }
   .file-pill .fp-x:hover { color: var(--red); }
   .file-pill.active { border-color: var(--accent); color: var(--accent2); background: rgba(124,106,247,0.1); }
+  .fp-ordinal { font-weight: 700; }
+  .fp-date { color: var(--text3); font-size: 10px; }
 
   /* ── Metrics tab ── */
   #metricsMain { display: none; padding: 14px 20px; }
@@ -246,6 +248,14 @@
   .run-table tr:last-child td { border-bottom: none; }
   .pass-cell { color: var(--green); font-weight: 600; }
   .fail-cell { color: var(--red); font-weight: 600; }
+
+  /* ── Sortable tables ── */
+  .metrics-body { overflow-x: auto; }
+  th.sortable { cursor: pointer; white-space: nowrap; }
+  th.sortable:hover { color: var(--text2); }
+  th.sortable::after { content: ' ⇅'; opacity: 0.3; font-size: 9px; }
+  th.sortable[data-sort-dir="asc"]::after { content: ' ▲'; opacity: 0.8; }
+  th.sortable[data-sort-dir="desc"]::after { content: ' ▼'; opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -334,9 +344,16 @@ function readBlob(file) {
   r.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      const idx = allLogs.findIndex(l => l.filename === file.name);
-      if (idx >= 0) { allLogs[idx] = { filename: file.name, data }; activeLogIndex = idx; }
-      else { allLogs.push({ filename: file.name, data }); activeLogIndex = allLogs.length - 1; }
+      const existingIdx = allLogs.findIndex(l => l.filename === file.name);
+      if (existingIdx >= 0) {
+        allLogs[existingIdx] = { filename: file.name, data };
+      } else {
+        allLogs.push({ filename: file.name, data });
+      }
+      // Keep newest-first order (filenames are YYYYMMDD_HHMMSS so lex sort works)
+      allLogs.sort((a, b) => b.filename.localeCompare(a.filename));
+      activeLogIndex = allLogs.findIndex(l => l.filename === file.name);
+      if (activeLogIndex < 0) activeLogIndex = 0;
       renderAll();
     }
     catch(err) { alert('Could not parse JSON: ' + err.message); }
@@ -349,12 +366,23 @@ function renderAll() {
   render(allLogs[activeLogIndex].data);
   if (activeTab === 'metrics') renderMetrics();
 }
+function ordinalLabel(i) {
+  if (i === 0) return 'Latest';
+  const n = i + 1;
+  const s = (n % 10 === 1 && n !== 11) ? 'st'
+          : (n % 10 === 2 && n !== 12) ? 'nd'
+          : (n % 10 === 3 && n !== 13) ? 'rd' : 'th';
+  return n + s + ' Run';
+}
 function renderFileList() {
   const el = document.getElementById('fileList');
   el.innerHTML = allLogs.map((l, i) => {
     const shortName = l.filename.replace(/career_log_?/, '').replace(/\.json$/, '') || l.filename;
+    const m = shortName.match(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/);
+    const dateStr = m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : shortName;
     return `<div class="file-pill${i === activeLogIndex ? ' active' : ''}" onclick="selectLog(${i})" title="${esc(l.filename)}">
-      <span>${esc(shortName)}</span>
+      <span class="fp-ordinal">${esc(ordinalLabel(i))}</span>
+      <span class="fp-date">${esc(dateStr)}</span>
       <span class="fp-x" onclick="event.stopPropagation();removeLog(${i})">✕</span>
     </div>`;
   }).join('');
@@ -508,6 +536,7 @@ function renderShopHistory(turns) {
       const key = row.item_id;
       if (!perItem[key]) perItem[key] = {
         name: row.name || ITEM[row.item_id] || ('id:' + row.item_id),
+        itemId: row.item_id,
         offered: 0, bought: 0, missed: 0, skippedReasons: {}
       };
       const pi = perItem[key];
@@ -541,7 +570,19 @@ function renderShopHistory(turns) {
   `;
 
   // ── Per-item totals table ──
-  const items = Object.values(perItem).sort((a, b) => b.offered - a.offered || a.name.localeCompare(b.name));
+  function itemSortGroup(id) {
+    if (id === 11002) return 0;  // Master Cleat Hammer
+    if (id === 11001) return 1;  // Artisan Cleat Hammer
+    if (id >= 8001 && id <= 8003) return 2;  // Megaphones
+    if (id >= 1201 && id <= 1205) return 3;  // Scrolls
+    if (id >= 1101 && id <= 1105) return 4;  // Manuals
+    return 5;
+  }
+  const items = Object.values(perItem).sort((a, b) => {
+    const ga = itemSortGroup(a.itemId), gb = itemSortGroup(b.itemId);
+    if (ga !== gb) return ga - gb;
+    return b.offered - a.offered || a.name.localeCompare(b.name);
+  });
   const totalsEl = document.getElementById('itemTotals');
   totalsEl.innerHTML = `
     <div class="totals-section open">
@@ -552,11 +593,11 @@ function renderShopHistory(turns) {
       <div class="totals-body">
         <table class="totals-table">
           <thead><tr>
-            <th>Item</th>
-            <th class="r">Offered</th>
-            <th class="r">Bought</th>
-            <th class="r">Skipped</th>
-            <th class="r">Missed</th>
+            <th class="sortable" onclick="sortTable(this)">Item</th>
+            <th class="r sortable" onclick="sortTable(this)">Offered</th>
+            <th class="r sortable" onclick="sortTable(this)">Bought</th>
+            <th class="r sortable" onclick="sortTable(this)">Skipped</th>
+            <th class="r sortable" onclick="sortTable(this)">Missed</th>
             <th>Skip Reasons</th>
           </tr></thead>
           <tbody>${items.map(it => {
@@ -905,24 +946,66 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* ── Sortable tables ── */
+function sortTable(th) {
+  const table = th.closest('table');
+  const idx = Array.from(th.parentElement.children).indexOf(th);
+  const asc = th.dataset.sortDir !== 'asc';
+  th.closest('tr').querySelectorAll('th.sortable').forEach(t => delete t.dataset.sortDir);
+  th.dataset.sortDir = asc ? 'asc' : 'desc';
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    const aText = (a.children[idx] || {}).textContent || '';
+    const bText = (b.children[idx] || {}).textContent || '';
+    const aNum = parseFloat(aText.replace(/[^0-9.-]/g, ''));
+    const bNum = parseFloat(bText.replace(/[^0-9.-]/g, ''));
+    if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+    return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
 /* ── Metrics ── */
 const CLEAT_IDS = {11001:'Artisan Cleat Hammer', 11002:'Master Cleat Hammer'};
 
 function analyzeCleatHammers(turns) {
   const uses = [];
   for (const t of turns) {
-    const used = (t.bot_item_use_selected || []).filter(i => CLEAT_IDS[i.item_id]);
-    if (!used.length) continue;
     const isRace = t.selected_action === 'race';
     const parts = (t.decision_reason || '').split(' ');
-    // decision_reason race format: "150 G1 Race Name"
     const grade = isRace && parts.length >= 2 ? parts[1] : '(non-race)';
     const raceName = isRace && parts.length >= 3 ? parts.slice(2).join(' ') : '—';
-    for (const item of used) {
+    // Count consumable uses (bot_item_use_selected)
+    for (const item of (t.bot_item_use_selected || [])) {
+      if (!CLEAT_IDS[item.item_id]) continue;
       uses.push({ turn: t.turn, itemId: item.item_id, itemName: CLEAT_IDS[item.item_id] || item.name, isRace, raceGrade: grade, raceName });
+    }
+    // Count shop purchases — buying IS the "use" for cleat hammers
+    const usedIds = new Set((t.bot_item_use_selected || []).map(i => i.item_id));
+    for (const row of (t.shop_rows_enriched || [])) {
+      if (!CLEAT_IDS[row.item_id] || !row.selected || row.skip_reason) continue;
+      if (usedIds.has(row.item_id)) continue; // already counted above
+      uses.push({ turn: t.turn, itemId: row.item_id, itemName: CLEAT_IDS[row.item_id] || row.name, isRace: false, raceGrade: '(purchased)', raceName: '—' });
     }
   }
   return uses;
+}
+
+function countItemStats(turns, targetIds) {
+  const idSet = new Set(targetIds);
+  let offered = 0, bought = 0, used = 0;
+  for (const t of turns) {
+    for (const row of (t.shop_rows_enriched || [])) {
+      if (!idSet.has(row.item_id)) continue;
+      offered++;
+      if (row.selected && !row.skip_reason) bought++;
+    }
+    for (const item of (t.bot_item_use_selected || [])) {
+      if (idSet.has(item.item_id)) used++;
+    }
+  }
+  return { offered, bought, used };
 }
 
 function checkTurn73MCH(turns) {
@@ -944,15 +1027,18 @@ function renderMetrics() {
   const el = document.getElementById('metricsMain');
   if (!allLogs.length) { el.innerHTML = '<p class="no-data">No log files loaded.</p>'; return; }
 
-  const runRows = allLogs.map(({ filename, data }) => {
+  const runRows = allLogs.map(({ filename, data }, i) => {
     const turns = data.turns || [];
     const uses = analyzeCleatHammers(turns);
     const mch73 = checkTurn73MCH(turns);
     const artisanUses = uses.filter(u => u.itemId === 11001).length;
     const masterUses  = uses.filter(u => u.itemId === 11002).length;
-    const shortName = filename.replace(/career_log_?/, '').replace(/\.json$/, '') || filename;
+    const raw = filename.replace(/career_log_?/, '').replace(/\.json$/, '') || filename;
+    const m = raw.match(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/);
+    const dateLabel = m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : raw;
+    const shortName = `${ordinalLabel(i)} (${dateLabel})`;
     const finalTurn = turns.length ? turns[turns.length - 1].turn : '—';
-    return { shortName, filename, artisanUses, masterUses, mch73, uses, finalTurn };
+    return { shortName, filename, artisanUses, masterUses, mch73, uses, finalTurn, turns };
   });
 
   const totalRuns = runRows.length;
@@ -991,7 +1077,7 @@ function renderMetrics() {
     html += `<div class="no-data">No Cleat Hammer uses found in loaded logs.</div>`;
   } else {
     html += `<table class="grade-table"><thead><tr>
-      <th>Item</th><th>Race Grade</th><th>Uses</th><th>Distribution</th>
+      <th class="sortable" onclick="sortTable(this)">Item</th><th class="sortable" onclick="sortTable(this)">Race Grade</th><th class="sortable" onclick="sortTable(this)">Uses</th><th>Distribution</th>
     </tr></thead><tbody>`;
     for (const g of gradeRows) {
       const pct = Math.round(g.count / maxCount * 100);
@@ -1015,12 +1101,12 @@ function renderMetrics() {
     </div>
     <div class="metrics-body">
     <table class="run-table"><thead><tr>
-      <th>Run</th>
+      <th class="sortable" onclick="sortTable(this)">Run</th>
       <th>T73: inv + shop = total</th>
-      <th>T73 Check</th>
-      <th>Artisan Uses</th>
-      <th>Master Uses</th>
-      <th>Final Turn</th>
+      <th class="sortable" onclick="sortTable(this)">T73 Check</th>
+      <th class="sortable" onclick="sortTable(this)">ACH Bought</th>
+      <th class="sortable" onclick="sortTable(this)">MCH Bought</th>
+      <th class="sortable" onclick="sortTable(this)">Final Turn</th>
     </tr></thead><tbody>`;
   for (const r of runRows) {
     const { invCount, shopCount, total, met } = r.mch73;
@@ -1028,10 +1114,51 @@ function renderMetrics() {
       <td title="${esc(r.filename)}">${esc(r.shortName)}</td>
       <td style="color:var(--text2)">${invCount} + ${shopCount} = <b>${total}</b></td>
       <td class="${met?'pass-cell':'fail-cell'}">${met?'✓ Pass':'✗ Fail'}</td>
-      <td>${r.artisanUses || '—'}</td>
-      <td>${r.masterUses || '—'}</td>
+      <td>${r.artisanUses || 0}</td>
+      <td>${r.masterUses || 0}</td>
       <td>${r.finalTurn}</td>
     </tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  // ── Priority Items Per Run ──
+  const PRIORITY_GROUPS = [
+    { label: 'Master Cleat Hammer',  ids: [11002] },
+    { label: 'Artisan Cleat Hammer', ids: [11001] },
+    { label: 'Coaching Mega',        ids: [8001] },
+    { label: 'Motivating Mega',      ids: [8002] },
+    { label: 'Empowering Mega',      ids: [8003] },
+    { label: 'Spd Scroll',           ids: [1201] },
+    { label: 'Sta Scroll',           ids: [1202] },
+    { label: 'Pow Scroll',           ids: [1203] },
+    { label: 'Guts Scroll',          ids: [1204] },
+    { label: 'Wit Scroll',           ids: [1205] },
+    { label: 'Spd Manual',           ids: [1101] },
+    { label: 'Sta Manual',           ids: [1102] },
+    { label: 'Pow Manual',           ids: [1103] },
+    { label: 'Guts Manual',          ids: [1104] },
+    { label: 'Wit Manual',           ids: [1105] },
+  ];
+  html += `<div class="metrics-section">
+    <div class="metrics-hdr">
+      <h3>Priority Items Per Run</h3>
+      <p>Shop appearances (offered) vs purchased (bought) vs consumed (used) per run</p>
+    </div>
+    <div class="metrics-body">
+    <table class="run-table"><thead><tr>
+      <th class="sortable" onclick="sortTable(this)">Run</th>
+      ${PRIORITY_GROUPS.map(g => `<th class="sortable" onclick="sortTable(this)">${esc(g.label)}<br><span style="font-size:9px;font-weight:400;opacity:0.55">off / buy / use</span></th>`).join('')}
+      <th class="sortable" onclick="sortTable(this)">Final Turn</th>
+    </tr></thead><tbody>`;
+  for (const r of runRows) {
+    html += `<tr><td title="${esc(r.filename)}">${esc(r.shortName)}</td>`;
+    for (const g of PRIORITY_GROUPS) {
+      const s = countItemStats(r.turns, g.ids);
+      const boughtColor = s.bought > 0 ? 'var(--green)' : 'var(--text3)';
+      const useColor = s.used > 0 ? 'var(--blue)' : 'var(--text3)';
+      html += `<td><span style="color:var(--text3)">${s.offered}</span> / <span style="color:${boughtColor};font-weight:${s.bought>0?700:400}">${s.bought}</span> / <span style="color:${useColor}">${s.used}</span></td>`;
+    }
+    html += `<td>${r.finalTurn}</td></tr>`;
   }
   html += `</tbody></table></div></div>`;
 
