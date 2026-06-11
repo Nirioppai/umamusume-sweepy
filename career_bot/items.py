@@ -690,9 +690,9 @@ class MantItemManager:
             return None
 
         if is_climax_prep:
-            # Turns 65-72: hold at 2 Masters (3rd bought at turn 73 shop).
-            # Buy Master only if below 2; otherwise stock Artisan for race use.
-            if master_qty < 2:
+            # Turns 65-72: accumulate 3 Masters before climax (T73 shop often has no MCH).
+            # Don't rely on turn-73 shop for the 3rd — get all 3 here if possible.
+            if master_qty < 3:
                 for candidate in ("Master Cleat Hammer", "Artisan Cleat Hammer"):
                     row = available_by_name.get(candidate)
                     if not row:
