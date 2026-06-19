@@ -617,19 +617,6 @@ class UmaClient:
         if rc != 1:
             if rc == 205 and retry_205 > 0:
                 print(f"205 on {ep}, retrying... ({retry_205} left)")
-                new_res_ver = dh.get('res_ver') or dh.get('required_res_ver')
-                if new_res_ver and new_res_ver != self.res_ver:
-                    print(f"res_ver updated from 205 response: {self.res_ver} -> {new_res_ver}")
-                    self.res_ver = str(new_res_ver)
-                else:
-                    try:
-                        refresh = self.call('load/index', {'adid': ''}, retry_208=0, retry_205=0)
-                        rv = (refresh.get('data_headers') or {}).get('res_ver')
-                        if rv and str(rv) != self.res_ver:
-                            print(f"res_ver refreshed via load/index: {self.res_ver} -> {rv}")
-                            self.res_ver = str(rv)
-                    except Exception:
-                        pass
                 dna_sleep(1.0, 2.5)
                 return self.call(ep, args, retry_208=retry_208, retry_205=retry_205 - 1)
 

@@ -36,3 +36,26 @@ Traceback (most recent call last):
 Exception: API error 201 on single_mode_free/check_event: {"endpoint": "single_mode_free/check_event", "response_code": 201, "result_code": 201, "data_headers": {"viewer_id": 3405336493685, "sid": "<redacted>", "servertime": 1780651176, "result_code": 201}}
 
 
+--- CRASH AT 2026-06-06 10:56:59 ---
+Traceback (most recent call last):
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 281, in _run
+    state = self._race(client, state, preset, decision.payload)
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\runner.py", line 904, in _race
+    entry = client.race_entry(program_id=program_id, current_turn=current_turn)
+  File "C:\Active Codebase\umamusume-sweepy\uma_api\client.py", line 899, in race_entry
+    return self.call('single_mode_free/race_entry', payload, retry_208=retry_208, retry_205=retry_205)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\delay.py", line 184, in _paced_call
+    return self._raw_call(ep, *args, **kwargs)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\uma_api\client.py", line 634, in call
+    return self.call(ep, args, retry_208=retry_208, retry_205=retry_205 - 1)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\career_bot\delay.py", line 184, in _paced_call
+    return self._raw_call(ep, *args, **kwargs)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Active Codebase\umamusume-sweepy\uma_api\client.py", line 648, in call
+    raise Exception(err_msg)
+Exception: API error 201 on single_mode_free/race_entry: {"endpoint": "single_mode_free/race_entry", "response_code": 201, "result_code": 201, "data_headers": {"viewer_id": 3405336493685, "sid": "<redacted>", "servertime": 1780714618, "result_code": 201}}
+
+

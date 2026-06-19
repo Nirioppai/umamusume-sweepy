@@ -1235,13 +1235,15 @@ async def start_career(req: StartCareerRequest):
 backend_loop_thread = None
 backend_loop_stop = False
 backend_loop_count = 0
+backend_loop_error = None
 
 def manage_career_loop(req, preset, initial_result):
-    global backend_loop_stop, active_account, active_client, backend_loop_count
+    global backend_loop_stop, active_account, active_client, backend_loop_count, backend_loop_error
     max_steps = max(1, min(int(req.max_steps or 2500), 3000))
     consecutive_fails = 0
     current_result = initial_result
     backend_loop_count = 0
+    backend_loop_error = None
 
     while not backend_loop_stop:
         career_runner.start(active_client, preset, current_result, max_steps, burn_clocks=req.burn_clocks, dev_mode=req.dev_mode)
@@ -1292,13 +1294,19 @@ def manage_career_loop(req, preset, initial_result):
                 print(f"Loop load_career fallback failed: {e}")
 
         started_ok = False
+        start_fail_detail = None
         while not started_ok and not backend_loop_stop:
             try:
                 started = start_career_from_request(req)
                 if not started.get("success"):
+                    start_fail_detail = started.get("detail") or "start_career_from_request returned failure"
                     consecutive_fails += 1
                     if consecutive_fails >= 5:
                         break
+                    try:
+                        active_client.login()
+                    except Exception as login_exc:
+                        print(f"Loop session refresh failed: {login_exc}")
                     for _ in range(15):
                         if backend_loop_stop:
                             return
@@ -1310,15 +1318,25 @@ def manage_career_loop(req, preset, initial_result):
                 started_ok = True
                 consecutive_fails = 0
             except Exception as e:
+                start_fail_detail = str(e)
                 consecutive_fails += 1
                 if consecutive_fails >= 5:
                     break
+                try:
+                    active_client.login()
+                except Exception as login_exc:
+                    print(f"Loop session refresh failed: {login_exc}")
                 for _ in range(15):
                     if backend_loop_stop:
                         return
                     dna_sleep(1.0, 1.0)
 
         if not started_ok:
+            backend_loop_error = (
+                "career loop stopped: server rejected career start after session refresh "
+                f"— check parent/friend support card selection ({start_fail_detail})"
+            )
+            print(backend_loop_error)
             break
 
 @app.post("/api/career/run")
@@ -1385,6 +1403,7 @@ async def run_career(req: RunCareerRequest):
 
         snap = career_runner.snapshot()
         snap["loop_count"] = backend_loop_count
+        snap["loop_error"] = backend_loop_error
         return {"success": True, "account": account, "chara_info": chara_info, "runner": snap}
     except Exception as e:
         return {"success": False, "detail": str(e)}
@@ -1393,6 +1412,7 @@ async def run_career(req: RunCareerRequest):
 async def career_runner_status():
     snap = career_runner.snapshot()
     snap["loop_count"] = backend_loop_count
+    snap["loop_error"] = backend_loop_error
     return {"success": True, "runner": snap, "account": active_account}
 
 @app.post("/api/career/runner/stop")
