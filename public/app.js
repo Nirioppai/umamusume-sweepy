@@ -16,7 +16,8 @@ const state = {
     burnClocks: false,
     displayedClocksUsed: 0,
     devEnabled: false,
-    consecutiveRunnerFails: 0
+    consecutiveRunnerFails: 0,
+    lastBeepedLoopCount: -1
 };
 const els = {
     loadingScreen: document.getElementById('loading-screen'),
@@ -419,6 +420,21 @@ const els = {
             } catch (e) {
                 return fallback;
             }
+        }
+        function playBeeps(count = 3, freq = 880, durationMs = 200, gapMs = 150) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                for (let i = 0; i < count; i++) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = freq;
+                    const start = ctx.currentTime + i * (durationMs + gapMs) / 1000;
+                    osc.start(start);
+                    osc.stop(start + durationMs / 1000);
+                }
+            } catch (e) {}
         }
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -2119,6 +2135,10 @@ const els = {
                     if (!rows.length) els.startStatus.innerText = `Career #${loopCount + 1} finished! Restarting...`;
                     if (state.account && state.account.career) state.account.career.active = false;
                     renderAccountStrip(state.account);
+                    if (state.lastBeepedLoopCount !== loopCount) {
+                        state.lastBeepedLoopCount = loopCount;
+                        playBeeps(3);
+                    }
                 } else if (runner.steps) {
                     els.startStatus.classList.toggle('error', false);
                     if (!rows.length) els.startStatus.innerText = `Runner stopped after ${runner.steps} steps${loopLabel}`;
