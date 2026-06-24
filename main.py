@@ -1276,8 +1276,15 @@ def manage_career_loop(req, preset, initial_result):
             dna_sleep(1.0, 1.0)
 
         try:
+            active_client.reset_career_state()
+            active_client.call('tool/start_session', {'attestation_type': 0, 'device_token': None})
+        except Exception as e:
+            print(f"Loop start_session failed: {e}")
+
+        try:
             index_res = active_client.call('load/index', {'adid': ''})
             index_data = index_res.get('data', {})
+            active_client.refresh_cached_account_state(index_data)
             loop_account = get_account_status(index_data)
             active_account = loop_account
         except Exception as e:

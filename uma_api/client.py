@@ -333,7 +333,10 @@ class UmaClient:
         self.res_ver = cfg.get('res_ver', '')
 
         if not self.app_ver or not self.res_ver:
-             pass
+            raise RuntimeError(
+                f"app_ver={self.app_ver!r} res_ver={self.res_ver!r} are empty. "
+                "Run Sweepy in record mode with a manual session to refresh version strings."
+            )
 
         self.sid = bytes(16)
         self.cached_load_data = {}
@@ -490,6 +493,13 @@ class UmaClient:
 
     def regen_sid(self):
         self.sid = make_sid(self.viewer_id, self.udid_str)
+
+    def reset_career_state(self):
+        self.cached_load_data = {}
+        self.tp_info = {}
+        self.coin_info = {}
+        self.item_map = {}
+        self.current_scenario_id = None
 
     def common(self):
         return {
