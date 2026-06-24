@@ -32,6 +32,8 @@ JS_CODE = r'''
 (function() {
     var buffers = {};
     var attached = {};
+    var lastEndpoint = {};
+    var captureSeq = 0;
     function hex2(n) { return ('0' + (n & 255).toString(16)).slice(-2); }
     function uuidFromHex(h) {
         return h.substring(0, 8) + '-' + h.substring(8, 12) + '-' + h.substring(12, 16) + '-' + h.substring(16, 20) + '-' + h.substring(20);
@@ -61,14 +63,14 @@ JS_CODE = r'''
         var headerLen = decoded[0] | (decoded[1] << 8) | (decoded[2] << 16) | (decoded[3] << 24);
         var blob1End = 4 + headerLen;
         if (headerLen < 120 || headerLen > 2048 || decoded.length < blob1End) return;
-        
+
         var udidHex = '';
         for (var i = blob1End - 96; i < blob1End - 80; i++) udidHex += hex2(decoded[i]);
         var authHex = '';
         for (var j = blob1End - 48; j < blob1End; j++) authHex += hex2(decoded[j]);
-        
+
         if (!viewerId || !authHex || authHex.length < 64 || udidHex.length !== 32) return;
-        
+
         send({
             type: 'creds',
             endpoint: endpoint,
@@ -81,40 +83,87 @@ JS_CODE = r'''
             body: body
         });
     }
-    function parseHttp(text) {
+    function parseHttp(key, text) {
         if (text.indexOf('/umamusume/') < 0) return;
         var em = text.match(/POST\s+\/umamusume\/([^\s]+)\s+HTTP/i);
         var vm = text.match(/(?:^|\r\n)(?:ViewerID|ViewerId):\s*(\d+)/i);
         var appVer = text.match(/(?:^|\r\n)APP-VER:\s*([^\r\n]+)/i);
         var resVer = text.match(/(?:^|\r\n)RES-VER:\s*([^\r\n]+)/i);
+        var sidMatch = text.match(/(?:^|\r\n)SID:\s*([^\r\n]+)/i);
         var idx = text.indexOf('\r\n\r\n');
         if (!em || !vm || idx < 0) return;
-        parseWire(em[1], vm[1], text.substring(idx + 4), appVer ? appVer[1].trim() : '', resVer ? resVer[1].trim() : '');
+        var endpoint = em[1];
+        var body = text.substring(idx + 4);
+        lastEndpoint[key] = endpoint;
+        captureSeq++;
+        send({
+            type: 'capture_req',
+            seq: captureSeq,
+            endpoint: endpoint,
+            viewer_id: vm[1],
+            app_ver: appVer ? appVer[1].trim() : '',
+            res_ver: resVer ? resVer[1].trim() : '',
+            sid: sidMatch ? sidMatch[1].trim() : '',
+            body: body,
+            ts: Date.now()
+        });
+        parseWire(endpoint, vm[1], body, appVer ? appVer[1].trim() : '', resVer ? resVer[1].trim() : '');
+    }
+    function tryParseResponse(key, buf) {
+        var headerEnd = buf.indexOf('\r\n\r\n');
+        if (headerEnd < 0) return -1;
+        var headers = buf.substring(0, headerEnd);
+        var clMatch = headers.match(/Content-Length:\s*(\d+)/i);
+        var length = clMatch ? parseInt(clMatch[1], 10) : 0;
+        var total = headerEnd + 4 + length;
+        if (length > 0 && buf.length < total) return -1;
+        var body = length > 0 ? buf.substring(headerEnd + 4, headerEnd + 4 + length) : '';
+        var ep = lastEndpoint[key] || 'unknown';
+        captureSeq++;
+        send({
+            type: 'capture_res',
+            seq: captureSeq,
+            endpoint: ep,
+            body: body,
+            ts: Date.now()
+        });
+        return total;
     }
     function parseChunk(key, chunk) {
         var buf = (buffers[key] || '') + chunk;
         if (buf.length > 2097152) buf = buf.substring(buf.length - 1048576);
         var start = buf.indexOf('POST ');
-        if (start < 0) {
-            buffers[key] = buf.slice(-4096);
+        if (start >= 0) {
+            if (start > 0) buf = buf.substring(start);
+            var headerEnd = buf.indexOf('\r\n\r\n');
+            if (headerEnd < 0) {
+                buffers[key] = buf;
+                return;
+            }
+            var headers = buf.substring(0, headerEnd);
+            var lm = headers.match(/Content-Length:\s*(\d+)/i);
+            var length = lm ? parseInt(lm[1], 10) : 0;
+            var total = headerEnd + 4 + length;
+            if (length > 0 && buf.length < total) {
+                buffers[key] = buf;
+                return;
+            }
+            parseHttp(key, length > 0 ? buf.substring(0, total) : buf);
+            buffers[key] = buf.length > total ? buf.substring(total) : '';
             return;
         }
-        if (start > 0) buf = buf.substring(start);
-        var headerEnd = buf.indexOf('\r\n\r\n');
-        if (headerEnd < 0) {
-            buffers[key] = buf;
+        var resStart = buf.indexOf('HTTP/');
+        if (resStart >= 0) {
+            if (resStart > 0) buf = buf.substring(resStart);
+            var consumed = tryParseResponse(key, buf);
+            if (consumed < 0) {
+                buffers[key] = buf;
+                return;
+            }
+            buffers[key] = buf.length > consumed ? buf.substring(consumed) : '';
             return;
         }
-        var headers = buf.substring(0, headerEnd);
-        var lm = headers.match(/Content-Length:\s*(\d+)/i);
-        var length = lm ? parseInt(lm[1], 10) : 0;
-        var total = headerEnd + 4 + length;
-        if (length > 0 && buf.length < total) {
-            buffers[key] = buf;
-            return;
-        }
-        parseHttp(length > 0 ? buf.substring(0, total) : buf);
-        buffers[key] = buf.length > total ? buf.substring(total) : '';
+        buffers[key] = buf.slice(-4096);
     }
     function hookTls() {
         var ga = Process.findModuleByName('GameAssembly.dll');
@@ -178,6 +227,17 @@ JS_CODE = r'''
 DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
+
+# ── Record Mode State ─────────────────────────────────────────
+record_mode_active = False
+record_mode_log_path = None
+record_mode_log_file = None
+record_mode_entry_count = 0
+record_mode_frida_session = None
+record_mode_frida_script = None
+record_mode_udid = None
+record_mode_needs_updating = False
+record_mode_needs_updating_reason = ""
 
 chara_map = {}
 support_map = {}
@@ -1239,6 +1299,7 @@ backend_loop_error = None
 
 def manage_career_loop(req, preset, initial_result):
     global backend_loop_stop, active_account, active_client, backend_loop_count, backend_loop_error
+    global record_mode_needs_updating, record_mode_needs_updating_reason
     max_steps = max(1, min(int(req.max_steps or 2500), 3000))
     consecutive_fails = 0
     current_result = initial_result
@@ -1349,6 +1410,8 @@ def manage_career_loop(req, preset, initial_result):
 @app.post("/api/career/run")
 async def run_career(req: RunCareerRequest):
     global active_account, backend_loop_thread
+    if record_mode_active:
+        return {"success": False, "detail": "Cannot start bot while record mode is active — play manually"}
     if career_runner.snapshot().get("running") or (backend_loop_thread and backend_loop_thread.is_alive()):
         return {"success": False, "detail": "Career runner loop already active"}
     preset_name = req.preset_name or "xguri parent"
@@ -1420,6 +1483,13 @@ async def career_runner_status():
     snap = career_runner.snapshot()
     snap["loop_count"] = backend_loop_count
     snap["loop_error"] = backend_loop_error
+    needs = record_mode_needs_updating
+    reason = record_mode_needs_updating_reason
+    if active_client and hasattr(active_client, "_needs_updating") and active_client._needs_updating:
+        needs = True
+        reason = getattr(active_client, "_needs_updating_reason", "") or reason
+    snap["needs_updating"] = needs
+    snap["needs_updating_reason"] = reason
     return {"success": True, "runner": snap, "account": active_account}
 
 @app.post("/api/career/runner/stop")
@@ -1537,6 +1607,38 @@ async def delete_career(req: DeleteCareerRequest):
         return {"success": True, "account": account}
     except Exception as e:
         return {"success": False, "detail": str(e)}
+
+# ── Record Mode Endpoints ─────────────────────────────────────
+
+@app.post("/api/record/start")
+async def record_start():
+    if career_runner.snapshot().get("running") or (backend_loop_thread and backend_loop_thread.is_alive()):
+        return {"success": False, "detail": "Cannot record while bot is running"}
+    result = _start_record_mode()
+    return result
+
+
+@app.post("/api/record/stop")
+async def record_stop():
+    return _stop_record_mode()
+
+
+@app.get("/api/record/status")
+async def record_status():
+    needs = record_mode_needs_updating
+    reason = record_mode_needs_updating_reason
+    if active_client and hasattr(active_client, "_needs_updating") and active_client._needs_updating:
+        needs = True
+        reason = getattr(active_client, "_needs_updating_reason", "") or reason
+    return {
+        "recording": record_mode_active,
+        "file": str(record_mode_log_path) if record_mode_log_path else None,
+        "entry_count": record_mode_entry_count,
+        "udid_available": bool(record_mode_udid),
+        "needs_updating": needs,
+        "needs_updating_reason": reason,
+    }
+
 
 @app.get("/api/debug/start_state")
 async def get_start_state():
@@ -1700,6 +1802,188 @@ def has_fresh_auth_config(cfg):
     if len(udid) != 36 or udid.count('-') != 4:
         return False
     return True
+
+def _capture_output_dir():
+    from uma_api.client import runtime_output_root
+    return runtime_output_root() / "capture_logs"
+
+
+def _open_capture_log():
+    global record_mode_log_path, record_mode_log_file, record_mode_entry_count
+    out_dir = _capture_output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    record_mode_log_path = out_dir / f"capture_{stamp}.jsonl"
+    record_mode_log_file = open(record_mode_log_path, "a", encoding="utf-8")
+    record_mode_entry_count = 0
+    return record_mode_log_path
+
+
+def _close_capture_log():
+    global record_mode_log_file
+    if record_mode_log_file:
+        try:
+            record_mode_log_file.close()
+        except Exception:
+            pass
+        record_mode_log_file = None
+
+
+def _write_capture_entry(entry):
+    global record_mode_entry_count
+    if not record_mode_log_file:
+        return
+    def _default(obj):
+        if isinstance(obj, bytes):
+            return obj.hex()
+        return str(obj)
+    try:
+        record_mode_log_file.write(json.dumps(entry, ensure_ascii=False, default=_default) + "\n")
+        record_mode_log_file.flush()
+        record_mode_entry_count += 1
+    except Exception as e:
+        print(f"Capture write error: {e}")
+
+
+def _decode_captured_body(body_b64, udid):
+    try:
+        from uma_api.client import unpack
+        return unpack(body_b64, udid)
+    except Exception as e:
+        return {"_decode_error": str(e)}
+
+
+def _record_on_message(message, data):
+    global record_mode_entry_count
+    if not record_mode_active:
+        return
+    if message.get("type") == "error":
+        print(f"[RECORD] Frida error: {message.get('description')}")
+        return
+    payload = message.get("payload") or {}
+    msg_type = payload.get("type")
+
+    if msg_type == "creds":
+        global record_mode_udid, pending_game_auth_config
+        if payload.get("udid"):
+            record_mode_udid = payload["udid"]
+        if payload.get("app_ver") and payload.get("res_ver"):
+            try:
+                from uma_api.client import unpack as _unpack
+                wire = _unpack(payload.get("body") or "", payload.get("udid") or "")
+                for key in (
+                    "viewer_id", "device_id", "device_name",
+                    "graphics_device_name", "ip_address",
+                    "platform_os_version", "locale",
+                    "steam_id", "steam_session_ticket",
+                ):
+                    if wire.get(key) is not None:
+                        payload[key] = wire.get(key)
+            except Exception:
+                pass
+            pending_game_auth_config.update(payload)
+
+    if msg_type == "capture_req":
+        udid = record_mode_udid or (pending_game_auth_config.get("udid") or "")
+        decoded = _decode_captured_body(payload.get("body", ""), udid) if udid else {"_no_udid": True}
+        entry = {
+            "timestamp": payload.get("ts") or int(time.time() * 1000),
+            "source": "manual",
+            "direction": "REQ",
+            "endpoint": payload.get("endpoint", ""),
+            "request": decoded,
+            "app_ver": payload.get("app_ver", ""),
+            "res_ver": payload.get("res_ver", ""),
+            "sid": payload.get("sid", ""),
+            "seq": payload.get("seq", 0),
+        }
+        _write_capture_entry(entry)
+        ep = payload.get("endpoint", "")
+        print(f"[RECORD] REQ #{record_mode_entry_count}: {ep}")
+
+    elif msg_type == "capture_res":
+        udid = record_mode_udid or (pending_game_auth_config.get("udid") or "")
+        decoded = _decode_captured_body(payload.get("body", ""), udid) if udid and payload.get("body") else {}
+        result_code = 0
+        if isinstance(decoded, dict):
+            dh = decoded.get("data_headers") or {}
+            result_code = dh.get("result_code", 0)
+        entry = {
+            "timestamp": payload.get("ts") or int(time.time() * 1000),
+            "source": "manual",
+            "direction": "RES",
+            "endpoint": payload.get("endpoint", ""),
+            "response": decoded,
+            "result_code": result_code,
+            "seq": payload.get("seq", 0),
+        }
+        _write_capture_entry(entry)
+        ep = payload.get("endpoint", "")
+        print(f"[RECORD] RES #{record_mode_entry_count}: {ep} (rc={result_code})")
+
+
+def _start_record_mode():
+    global record_mode_active, record_mode_frida_session, record_mode_frida_script
+    global record_mode_udid
+
+    if record_mode_active:
+        return {"success": False, "detail": "Already recording"}
+
+    record_mode_udid = pending_game_auth_config.get("udid") or (
+        active_client.udid_str if active_client and hasattr(active_client, "udid_str") else None
+    )
+
+    log_path = _open_capture_log()
+
+    try:
+        session = frida.attach(PROCESS_NAME)
+        script = session.create_script(JS_CODE)
+        script.on("message", _record_on_message)
+        script.load()
+        record_mode_frida_session = session
+        record_mode_frida_script = script
+    except Exception as e:
+        _close_capture_log()
+        return {"success": False, "detail": f"Frida attach failed: {e}"}
+
+    record_mode_active = True
+    print(f"[RECORD] Started — logging to {log_path}")
+    return {
+        "success": True,
+        "file": str(log_path),
+        "udid_available": bool(record_mode_udid),
+    }
+
+
+def _stop_record_mode():
+    global record_mode_active, record_mode_frida_session, record_mode_frida_script
+
+    was_active = record_mode_active
+    record_mode_active = False
+
+    if record_mode_frida_script:
+        try:
+            record_mode_frida_script.unload()
+        except Exception:
+            pass
+        record_mode_frida_script = None
+
+    if record_mode_frida_session:
+        try:
+            record_mode_frida_session.detach()
+        except Exception:
+            pass
+        record_mode_frida_session = None
+
+    count = record_mode_entry_count
+    path = str(record_mode_log_path) if record_mode_log_path else ""
+    _close_capture_log()
+
+    if was_active:
+        print(f"[RECORD] Stopped — {count} entries captured → {path}")
+
+    return {"success": True, "file": path, "entry_count": count}
+
 
 def launch_game():
     if os.name != 'nt':

@@ -46,6 +46,7 @@
                         <button id="burn-clocks-btn" class="btn btn-sm turn-delay-button" type="button">BURN CLOCKS: OFF</button>
                         <button id="dev-career-btn" class="btn btn-sm turn-delay-button" type="button">LOOP: OFF</button>
                         <input id="loop-max-input" class="turn-delay-input" type="number" min="0" step="1" value="0" placeholder="∞" title="Max loop runs (0 = unlimited)" style="width:46px;text-align:center">
+                        <button id="record-mode-btn" class="btn btn-sm turn-delay-button record-mode-btn" type="button">RECORD: IDLE</button>
                     </div>
                 </div>
             </div>
@@ -185,6 +186,20 @@
                             </div>
                         </section>
 
+                        <div id="needs-updating-banner" class="needs-updating-banner" style="display:none">
+                            <div class="needs-updating-icon">&#9888;</div>
+                            <div class="needs-updating-text">
+                                <strong>Version drift detected — manual capture required</strong>
+                                <div id="needs-updating-reason" class="needs-updating-reason"></div>
+                            </div>
+                            <button id="needs-updating-record-btn" class="btn btn-sm btn-danger" type="button">START RECORDING</button>
+                        </div>
+                        <div id="record-mode-banner" class="record-mode-banner" style="display:none">
+                            <div class="record-mode-indicator"></div>
+                            <span id="record-mode-label">RECORDING — play manually, bot disabled</span>
+                            <span id="record-mode-count" class="record-mode-count">0 calls</span>
+                            <span id="record-mode-file" class="record-mode-file"></span>
+                        </div>
                         <div class="start-panel">
                             <button id="start-career-btn" class="btn btn-primary" type="button" disabled>RUN CAREER</button>
                             <div id="start-status" class="start-status"></div>

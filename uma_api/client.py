@@ -349,6 +349,8 @@ class UmaClient:
         self.api_jitter = dna_uniform(-0.02, 0.02)
 
         self.on_api_log = None
+        self._needs_updating = False
+        self._needs_updating_reason = ""
         self.trace_file = None
         if trace_enabled:
             self._init_trace_log()
@@ -645,8 +647,21 @@ class UmaClient:
             raise Exception(err_msg)
         if dh.get('sid') and isinstance(dh['sid'], str) and dh['sid'].strip():
             self.sid = next_sid(dh['sid'])
-        
+
+        live_res_ver = dh.get('res_ver') or (
+            data.get('resource_version') if isinstance(data, dict) else None
+        )
+        if live_res_ver and self.res_ver and str(live_res_ver) != str(self.res_ver):
+            self._flag_needs_updating(
+                f"RES-VER mismatch: bot={self.res_ver!r} server={live_res_ver!r}"
+            )
+
         return res
+
+    def _flag_needs_updating(self, reason):
+        self._needs_updating = True
+        self._needs_updating_reason = reason
+        print(f"[VERSION] NEEDS_UPDATING: {reason}")
 
     def hard_reset(self):
         self.sid = bytes(16)
@@ -805,7 +820,7 @@ class UmaClient:
             tp_info = {'current_tp': 100, 'max_tp': 100, 'max_recovery_time': 0}
         start_payload = {
             'start_chara': {
-                'card_id': card_id,
+                'card_id': int(card_id),
                 'support_card_ids': support_card_ids,
                 'friend_support_card_info': {
                     'viewer_id': friend_viewer_id,
@@ -834,6 +849,11 @@ class UmaClient:
             'use_tp': use_tp,
             'current_succession_rank_point': succession_rank_point
         }
+        import logging
+        logging.getLogger("sweepy.api").debug(
+            "[DEBUG] single_mode_free/start payload: %s",
+            json.dumps(start_payload, ensure_ascii=False, default=str),
+        )
         return self.call('single_mode_free/start', start_payload)
 
     def exec_command(self, command_type, command_id, current_turn, current_vital, command_group_id=0, select_id=0):

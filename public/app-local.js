@@ -376,6 +376,117 @@
         document.head.appendChild(style);
     }
 
+    // ── Record Mode ─────────────────────────────────────────────
+
+    let recordPolling = 0;
+
+    async function toggleRecordMode() {
+        const btn = document.getElementById('record-mode-btn');
+        if (!btn) return;
+        const isActive = btn.classList.contains('is-active');
+        btn.disabled = true;
+        try {
+            const endpoint = isActive ? '/api/record/stop' : '/api/record/start';
+            const res = await fetch(endpoint, { method: 'POST' });
+            const json = await res.json();
+            if (!json.success) {
+                alert(json.detail || 'Record mode failed');
+                btn.disabled = false;
+                return;
+            }
+            if (isActive) {
+                btn.classList.remove('is-active');
+                btn.innerText = 'RECORD: IDLE';
+                stopRecordPolling();
+                syncRecordUI(false, 0, json.file || '');
+                const startBtn = document.getElementById('start-career-btn');
+                if (startBtn) startBtn.disabled = false;
+            } else {
+                btn.classList.add('is-active');
+                btn.innerText = 'RECORD: STOP';
+                startRecordPolling();
+                syncRecordUI(true, 0, json.file || '');
+                const startBtn = document.getElementById('start-career-btn');
+                if (startBtn) startBtn.disabled = true;
+            }
+        } catch (e) {
+            console.error('Record mode toggle failed:', e);
+        }
+        btn.disabled = false;
+    }
+
+    function syncRecordUI(recording, count, file) {
+        const banner = document.getElementById('record-mode-banner');
+        const countEl = document.getElementById('record-mode-count');
+        const fileEl = document.getElementById('record-mode-file');
+        if (banner) banner.style.display = recording ? 'flex' : 'none';
+        if (countEl) countEl.textContent = count + ' calls';
+        if (fileEl && file) {
+            const parts = file.replace(/\\/g, '/').split('/');
+            fileEl.textContent = parts[parts.length - 1] || '';
+            fileEl.title = file;
+        }
+    }
+
+    function syncNeedsUpdatingBanner(needs, reason) {
+        const banner = document.getElementById('needs-updating-banner');
+        const reasonEl = document.getElementById('needs-updating-reason');
+        if (banner) banner.style.display = needs ? 'flex' : 'none';
+        if (reasonEl) reasonEl.textContent = reason || '';
+    }
+
+    async function pollRecordStatus() {
+        try {
+            const res = await fetch('/api/record/status');
+            const json = await res.json();
+            const btn = document.getElementById('record-mode-btn');
+            if (json.recording) {
+                if (btn && !btn.classList.contains('is-active')) {
+                    btn.classList.add('is-active');
+                    btn.innerText = 'RECORD: STOP';
+                }
+                syncRecordUI(true, json.entry_count || 0, json.file || '');
+            } else {
+                if (btn && btn.classList.contains('is-active')) {
+                    btn.classList.remove('is-active');
+                    btn.innerText = 'RECORD: IDLE';
+                    stopRecordPolling();
+                }
+                syncRecordUI(false, 0, '');
+            }
+            syncNeedsUpdatingBanner(json.needs_updating, json.needs_updating_reason);
+        } catch (e) {}
+    }
+
+    function startRecordPolling() {
+        stopRecordPolling();
+        recordPolling = setInterval(pollRecordStatus, 2000);
+    }
+
+    function stopRecordPolling() {
+        if (recordPolling) {
+            clearInterval(recordPolling);
+            recordPolling = 0;
+        }
+    }
+
+    function initRecordMode() {
+        const btn = document.getElementById('record-mode-btn');
+        if (btn) btn.addEventListener('click', toggleRecordMode);
+
+        const needsRecordBtn = document.getElementById('needs-updating-record-btn');
+        if (needsRecordBtn) {
+            needsRecordBtn.addEventListener('click', () => {
+                const mainBtn = document.getElementById('record-mode-btn');
+                if (mainBtn && !mainBtn.classList.contains('is-active')) {
+                    toggleRecordMode();
+                }
+            });
+        }
+
+        pollRecordStatus();
+    }
+
     // ── Init ─────────────────────────────────────────────────
 
     function init() {
@@ -401,6 +512,7 @@
         }
 
         injectTeamSetupUI();
+        initRecordMode();
 
         const presetSelect = document.getElementById('preset-select');
         if (presetSelect) {

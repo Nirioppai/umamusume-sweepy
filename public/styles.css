@@ -2463,3 +2463,96 @@ body.dashboard-mode .turn-delay-control {
 .badge-preop {
   background: #9370db;
 }
+
+/* ── Record Mode ────────────────────────────────────────────── */
+#record-mode-btn {
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.5);
+  color: #ffa500;
+}
+#record-mode-btn:hover {
+  background: rgba(255, 165, 0, 0.15);
+  border-color: #ffa500;
+}
+#record-mode-btn.is-active {
+  background: rgba(255, 0, 0, 0.25);
+  border-color: #ff3333;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.35);
+  animation: record-pulse 1.5s ease-in-out infinite;
+}
+#record-mode-btn.is-active:hover {
+  background: rgba(255, 0, 0, 0.35);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.45);
+}
+@keyframes record-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 25px rgba(255, 0, 0, 0.55); }
+}
+.record-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 0, 0, 0.12);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ff6b6b;
+}
+.record-mode-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff0000;
+  animation: record-dot-blink 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes record-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.record-mode-count {
+  color: #fff;
+  margin-left: auto;
+}
+.record-mode-file {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.needs-updating-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.5);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: #ffa500;
+}
+.needs-updating-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.needs-updating-text {
+  flex: 1;
+}
+.needs-updating-text strong {
+  display: block;
+  color: #fff;
+  font-size: 0.82rem;
+}
+.needs-updating-reason {
+  font-size: 0.7rem;
+  margin-top: 2px;
+  color: rgba(255, 165, 0, 0.8);
+}

@@ -4,3 +4,4 @@
 /scraped game logs
 career_bot/.timing_dna
 uma_runtime/bot_logs/career_log_*.json
+.venv
